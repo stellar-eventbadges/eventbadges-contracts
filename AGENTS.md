@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Rules for any AI agent working in this repository (`{REPO}`). Read this file at the start of every task.
+Rules for any AI agent working in this repository (`eventbadges-contracts`). Read this file at the start of every task.
 
 ## Project context
 
