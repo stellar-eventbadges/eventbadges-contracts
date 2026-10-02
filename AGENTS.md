@@ -49,7 +49,7 @@ Commands (run from the repository root):
 cargo fmt --all --check
 cargo clippy --all-targets -- -D warnings
 cargo test
-node --test scripts/
+node --test
 node scripts/check-errors.mjs
 stellar contract build
 ```
