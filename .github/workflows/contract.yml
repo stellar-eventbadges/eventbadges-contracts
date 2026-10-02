@@ -1,0 +1,47 @@
+name: Contract tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32v1-none
+          components: rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: stellar/stellar-cli@v28.1.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: Run contract unit tests
+        run: cargo test
+
+      - name: Check clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test the ERRORS.md sync checker
+        run: node --test
+
+      - name: Check ERRORS.md stays in sync with enum Error
+        run: node scripts/check-errors.mjs
+
+      - name: Build wasm
+        run: stellar contract build
