@@ -1,35 +1,82 @@
-# eventbadges — event badges on Stellar testnet
+# eventbadges — contracts
 
-Status: **scaffold only.** No contract, no app, no book has been written yet.
-Testnet only, no real money, **no pilot has happened**, and this project has
-never run against a deployed contract. Do not use it with real funds.
+Soroban contract for **eventbadges**: organizers create events and attendees
+claim a **non-transferable** attendance badge. Part of a three-repo project
+with `eventbadges-app` (web app) and `eventbadges-docs` (mdBook book).
 
-eventbadges is a Stellar/Soroban project in three repositories:
+**Status: v0 contract built and locally verified. Not deployed. No pilot has
+happened. Nothing here has run against a live network.**
 
-| Repo | Purpose | Status |
-|---|---|---|
-| `eventbadges-contracts` | Soroban contract (Rust) | scaffold only |
-| `eventbadges-app` | web app (Vite + React + TypeScript) | scaffold only |
-| `eventbadges-docs` | mdBook documentation | scaffold only |
+## What the contract does
 
+- `create_event(organizer, name_hash, claim_code_hash, max_claims, closes_at)`:
+  the organizer records an event with an opaque name hash, the SHA-256 of a
+  random claim code, a badge cap (1–10,000) and a claim deadline. Organizer-
+  authorized. Returns the event id.
+- `claim(event_id, attendee, claim_code)`: the attendee claims their own badge
+  by presenting a code whose SHA-256 matches the stored hash. One badge per
+  attendee per event; fails after `closes_at` or when the cap is reached.
+- `award(event_id, attendee)`: the organizer issues a badge directly, for
+  attendees who cannot claim. Same window and cap rules.
+- `revoke(event_id, attendee)`: the organizer removes a badge. Allowed at any
+  time — a badge issued in error must be removable after the window closes.
+- `get_event(event_id)`, `has_badge(event_id, attendee)`,
+  `badges_of(event_id, attendee)` (bounded: at most one badge per attendee).
+- **There is no transfer, approve or operator entrypoint.** A badge cannot
+  move after issuance because nothing can move it. The reasoning and the
+  alternatives are recorded in
+  [docs/decisions/0001-nft-approach.md](docs/decisions/0001-nft-approach.md).
 
-## What is here now
+## Privacy
 
-Repository governance only, adapted from the completed `schoolfees` project:
-[AGENTS.md](AGENTS.md) (the rulebook for agents and humans),
-[CONTRIBUTING.md](CONTRIBUTING.md), [ROADMAP.md](ROADMAP.md) (what v0 will be,
-from the project's playbook section), MIT [LICENSE](LICENSE), `.gitignore`,
-`.gitattributes` (LF everywhere). No code yet; the first CI workflow lands
-with the first code that can pass it.
+No names, emails or personal IDs touch the chain. `name_hash` and
+`claim_code_hash` are opaque hashes; claim codes are random secrets generated
+off-chain (see [docs/claim-codes.md](docs/claim-codes.md)). Test fixtures use
+synthetic bytes only.
 
-## What v0 will be
+## Structure
 
-See [ROADMAP.md](ROADMAP.md). The scope is defined in the project's section of
-the build playbook; it is not invented here.
+Standard layout, shared with this program's other contract repos: thin
+[`src/lib.rs`](src/lib.rs) (`#[contractimpl]` delegation only),
+[`src/types.rs`](src/types.rs) (error enum in numbered ranges, stored types,
+`#[contractevent]` events), [`src/storage.rs`](src/storage.rs) (keys and TTL
+helpers computed from each event's real `closes_at` deadline),
+[`src/badges.rs`](src/badges.rs) (logic), [`src/error_paths.rs`](src/error_paths.rs)
+(exactly one test per error variant), [`src/test.rs`](src/test.rs)
+(lifecycle, auth and event-layout tests).
 
-## Honest limitations
+- [`ERRORS.md`](ERRORS.md) — one row per error variant; the user-facing
+  wording there is the source of truth for the app.
+- [`docs/events.md`](docs/events.md) — topic and data layout of all four
+  events, asserted exactly in tests.
+- [`scripts/check-errors.mjs`](scripts/check-errors.mjs) — fails when
+  `ERRORS.md` and `enum Error` drift; `node --test` covers the checker.
+- [`scripts/deploy-testnet.sh`](scripts/deploy-testnet.sh) — **written, never
+  run.** Deploying is Tim's step.
 
-- Nothing is implemented, tested, audited or deployed.
-- The contract has never been compiled; the app has never run; the book has
-  never been built.
-- No pilot has happened and none is claimed anywhere in these repositories.
+## Checks
+
+```bash
+cargo fmt --all --check
+cargo clippy --all-targets -- -D warnings
+cargo test              # 24 tests: 8 error paths + 16 lifecycle/auth/TTL
+node --test             # 9 tests over the ERRORS.md checker
+node scripts/check-errors.mjs
+stellar contract build  # wasm32v1-none; verified with Stellar CLI 28.1.0
+```
+
+Toolchain: `soroban-sdk = "28"` (28.0.0 in `Cargo.lock`), Rust stable
+(1.84.0+), target `wasm32v1-none`, release profile with
+`overflow-checks = true`.
+
+## Deliberately not built
+
+Unique per-attendee claim codes via Merkle proofs, badge metadata and images,
+batch awarding, event series and streak badges, pagination for `badges_of`.
+Each has a draft under [docs/issue-drafts/](docs/issue-drafts/); the list is
+mirrored in [ROADMAP.md](ROADMAP.md). Testnet only — no mainnet, ever, in this
+phase.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

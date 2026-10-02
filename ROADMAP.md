@@ -7,7 +7,11 @@ What is next for `eventbadges-contracts`, in order. Anything not listed as done 
 
 - [x] Repository governance: AGENTS.md, CONTRIBUTING.md, ROADMAP.md, LICENSE,
       .gitignore, .gitattributes (2026-10-01).
-- [ ] v0 contract from the project's playbook section.
+- [x] v0 contract from the project's playbook section (2026-10-02): the
+      six entrypoints, ranged error codes, four documented events, 24 tests
+      including one error-path test per variant, all six local checks green
+      (`cargo fmt --check`, clippy `-D warnings`, `cargo test`, `node
+      --test`, `node scripts/check-errors.mjs`, `stellar contract build`).
 
 ## Next
 
@@ -25,8 +29,8 @@ What is next for `eventbadges-contracts`, in order. Anything not listed as done 
       rust-toolchain pinned to `wasm32v1-none`; release profile with
       `overflow-checks = true`.
 - [ ] CI (`contract.yml`): fmt, clippy -D warnings, cargo test, node --test
-      scripts/, check-errors, `stellar contract build` (CLI v28.1.0). Lands
-      with the first code that can pass it.
+      check-errors, `stellar contract build` (CLI v28.1.0). Written on
+      2026-10-02; proves itself on GitHub on the next push.
 
 ## Deliberately unimplemented (from playbook section 9)
 
