@@ -21,7 +21,7 @@ Every failure mode has a defined code. No silent fallback.
 | Code | Variant | Raised by | Trigger | User-facing message | Next action |
 |---:|---|---|---|---|---|
 | 1 | `EventNotFound` | `claim`, `award`, `revoke`, `get_event`, `has_badge`, `badges_of` | No event record exists for that id. | "We couldn't find that event. Check the event id with the organizer." | Confirm the event id with the organizer. |
-| 2 | `BadgeNotFound` | `revoke`, `badges_of` | No badge record exists for that event and attendee. | "That address has no badge for this event." | Check the attendee address and the event. |
+| 2 | `BadgeNotFound` | `revoke` | The organizer tried to revoke a badge the attendee does not hold. | "That address has no badge for this event." | Check the attendee address and the event. |
 
 ## Lifecycle & timing (10–29)
 

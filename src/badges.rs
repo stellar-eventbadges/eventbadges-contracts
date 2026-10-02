@@ -16,17 +16,13 @@
 use soroban_sdk::{Address, Bytes, BytesN, Env, Vec};
 
 use crate::storage::{extend_instance_ttl, extend_record_ttl, DataKey};
-use crate::types::{
-    Badge, BadgeAwarded, BadgeClaimed, BadgeRevoked, Error, Event, EventCreated,
-};
+use crate::types::{Badge, BadgeAwarded, BadgeClaimed, BadgeRevoked, Error, Event, EventCreated};
 
 /// The most badges a single event can issue. Keeps `claim_count` arithmetic
-/// and the per-attendee list bounded; documented in the README.
+/// and the per-attendee list bounded; documented in the README. One attendee
+/// can hold at most one badge per event, enforced by the `AlreadyHeld` check
+/// in `claim` and `award`.
 pub const MAX_CLAIMS_PER_EVENT: u32 = 10_000;
-
-/// The most badges one attendee can hold for one event: one. Recorded as a
-/// constant so the cap is stated where the list is maintained.
-pub const MAX_BADGES_PER_ATTENDEE_PER_EVENT: u32 = 1;
 
 /// Loads an event or reports its absence.
 fn load_event(env: &Env, event_id: u64) -> Result<Event, Error> {
@@ -223,7 +219,7 @@ pub fn revoke(env: &Env, event_id: u64, attendee: Address) -> Result<(), Error> 
     if let Some(mut list) = env.storage().persistent().get::<_, Vec<Address>>(&list_key) {
         if let Some(index) = list.first_index_of(&attendee) {
             list.remove(index);
-            if list.len() == 0 {
+            if list.is_empty() {
                 env.storage().persistent().remove(&list_key);
             } else {
                 env.storage().persistent().set(&list_key, &list);
