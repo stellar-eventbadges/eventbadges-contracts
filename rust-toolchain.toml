@@ -1,0 +1,10 @@
+# `wasm32v1-none` is the only supported target for building this contract.
+#
+# The channel is deliberately not pinned here. A bare `channel = "stable"` would
+# resolve to the host's default triple, which differs between machines (on
+# Windows it forces the MSVC toolchain), so the toolchain stays the developer's
+# choice: use any current stable Rust, 1.84.0 or higher.
+#
+# CI pins its own toolchain explicitly; see .github/workflows/contract.yml.
+[toolchain]
+targets = ["wasm32v1-none"]
