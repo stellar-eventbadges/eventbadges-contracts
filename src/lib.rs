@@ -6,6 +6,10 @@ mod badges;
 mod storage;
 mod types;
 
+mod error_paths;
+mod test;
+mod test_helpers;
+
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, Vec};
 
 use crate::types::{Badge, Error, Event};
@@ -46,7 +50,12 @@ impl Contract {
     /// Errors: [`Error::EventNotFound`], [`Error::CapReached`],
     /// [`Error::EventClosed`], [`Error::AlreadyHeld`],
     /// [`Error::ClaimCodeMismatch`].
-    pub fn claim(env: Env, event_id: u64, attendee: Address, claim_code: Bytes) -> Result<(), Error> {
+    pub fn claim(
+        env: Env,
+        event_id: u64,
+        attendee: Address,
+        claim_code: Bytes,
+    ) -> Result<(), Error> {
         badges::claim(&env, event_id, attendee, &claim_code)
     }
 
