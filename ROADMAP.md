@@ -83,12 +83,29 @@ repos, so they stay in sync.
       be pointed at this system without the organizer fully understanding
       everything is public. Make it operational: is "no under-18 events in a
       pilot" a hard rule, who checks, and what does the organizer attest to?
-- [ ] **What attendees are told.** What must a person be told before they
-      claim: that their address, the timing and the obscured event name are
-      public and linkable, that nothing is deletable, and that anyone
-      worldwide can verify? Who delivers that notice — the app, the
-      organizer, both — and is a missing notice a blocker for the first
-      pilot?
+- [ ] **What attendees are told — copy drafted (2026-10-03), decisions
+      open.** The text is answered in
+      [`docs/attendee-notice.md` in the app repo](https://github.com/stellar-eventbadges/eventbadges-app/blob/main/docs/attendee-notice.md),
+      with every line traced to the code that makes it true: a short
+      on-screen version with a required acknowledgement, a full version one
+      tap away, and the paragraph nobody had written — **the claim code is
+      published inside the `claim` transaction and is permanent**, which the
+      docs book currently denies. **Partly delivered 2026-10-03:** the copy
+      exists and is implemented on the claim screen
+      ([draft 11 in the app repo](https://github.com/stellar-eventbadges/eventbadges-app/blob/main/docs/issue-drafts/11-attendee-privacy-notice.md)),
+      so the "what must a person be told" half of the question is answered.
+      Four decisions remain, and none of them is a copy question: who
+      delivers it (the app, the organizer, or both — recommended both, with
+      the organizer pointing at this text rather than writing their own);
+      whether a missing notice blocks the first pilot (recommended yes — a
+      claim is an irreversible public write of a linkable identifier, and the
+      claim-code paragraph cannot be consented to if it was never disclosed);
+      whether to change the contract instead of disclosing the exposure
+      (bigger than any one repo should decide alone); and whether an
+      acknowledgement recorded nowhere should be described as consent.
+      Shipping the notice settles none of them — the gate is `aria-disabled`
+      plus a refusal in `submitClaim`, recorded nowhere, which is deliberate
+      rather than a stopgap.
 - [ ] **Third parties in the path.** The app sends addresses — and the claim
       code inside the public `claim` transaction — to the Stellar RPC
       endpoint, and explorers index events. How are RPC operators and
