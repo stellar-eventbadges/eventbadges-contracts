@@ -49,6 +49,60 @@ contract lands:
    authority for what the contract does; v4 plus the schoolfees repos are
    the standard for how it is built (doc set, AGENTS.md, CI, checkers).
 
+### Legal review of the on-chain privacy model — needed before any pilot with real attendees
+
+The privacy page in the docs book raises questions only a human can answer.
+They are collected here as a checklist so the decision is concrete. Working
+through it produces a written position, not a compliance certificate, and is
+not legal advice. Source: [Privacy: what is on-chain](https://github.com/stellar-eventbadges/eventbadges-docs/blob/main/src/privacy.md);
+the same checklist is recorded in the ROADMAPs of all three eventbadges
+repos, so they stay in sync.
+
+- [ ] **Applicable law.** Which regimes apply to a pilot — GDPR (any EU/EEA
+      attendee?), NDPR/NDPA (Nigeria), other local law — and does the answer
+      change when the pilot group crosses a border?
+- [ ] **Who is the controller?** For an attendance record on a public
+      ledger: the organizer (they choose the event and who gets a badge),
+      the project, both, or neither? Write the position down before
+      recruiting anyone.
+- [ ] **Lawful basis.** What basis covers putting a wallet address and an
+      attendance fact on an immutable public ledger — consent, legitimate
+      interest, something else? Can consent be freely given when nothing can
+      ever be deleted, and what must the claim flow say before the wallet
+      signs?
+- [ ] **Erasure vs. immutability.** `revoke` removes the badge, but the
+      `badge_claimed` event stays on-chain forever. Is that defensible under
+      erasure and objection rights? If not, is the mitigation — no personal
+      data on-chain, fresh-address guidance, declining unsuitable pilots —
+      enough, and who signs off?
+- [ ] **Are the hashes personal data?** `name_hash` is low-entropy and
+      brute-forceable; an address becomes identifying the moment it is
+      linked off-chain. Does "it is only a hash" or "pseudonymous" actually
+      hold, or must both be treated as personal data?
+- [ ] **Children.** The privacy page says events involving minors must never
+      be pointed at this system without the organizer fully understanding
+      everything is public. Make it operational: is "no under-18 events in a
+      pilot" a hard rule, who checks, and what does the organizer attest to?
+- [ ] **What attendees are told.** What must a person be told before they
+      claim: that their address, the timing and the obscured event name are
+      public and linkable, that nothing is deletable, and that anyone
+      worldwide can verify? Who delivers that notice — the app, the
+      organizer, both — and is a missing notice a blocker for the first
+      pilot?
+- [ ] **Third parties in the path.** The app sends addresses — and the claim
+      code inside the public `claim` transaction — to the Stellar RPC
+      endpoint, and explorers index events. How are RPC operators and
+      explorers characterised (processor, independent controller), and can a
+      pilot simply accept the public testnet RPC?
+- [ ] **Off-chain handling by organizers.** Claim codes, attendee lists and
+      check-in spreadsheets never touch the chain but stay with the
+      organizer. Does the project owe organizers written data-handling
+      guidance (what to keep, what to delete, how to share codes), and is
+      that guidance a precondition for the first pilot?
+- [ ] **The pilot's own records.** Pilot notes name participants only at
+      their chosen level of detail and link real transactions. What consent
+      does that require, and how long are pilot notes kept?
+
 ## Explicitly out of scope
 
 Mainnet deployment. Anything the v0 design does not ask for.
