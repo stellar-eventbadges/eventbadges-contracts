@@ -12,8 +12,8 @@ use soroban_sdk::{
 use crate::storage::{DataKey, MIN_TTL_LEDGERS, SECONDS_PER_LEDGER};
 use crate::test_helpers::{
     advance_time, hash_of, instance_ttl, mock_attendee_auth_for_claim,
-    mock_organizer_auth_for_create_event, persistent_ttl, setup, setup_event, synthetic_code,
-    synthetic_hash, to_val, DAY_SECONDS,
+    mock_organizer_auth_for_create_event, persistent_ttl, setup, setup_claim_code_hash,
+    setup_event, synthetic_code, synthetic_hash, to_val, DAY_SECONDS,
 };
 
 #[test]
@@ -116,7 +116,7 @@ fn claim_issues_a_badge_to_the_caller() {
     let attendee = Address::generate(&env);
     let event_id = setup_event(&env, &client, &organizer);
 
-    client.claim(&event_id, &attendee, &synthetic_code(&env, 0xC7));
+    client.claim(&event_id, &attendee, &setup_claim_code_hash(&env));
 
     assert!(client.has_badge(&event_id, &attendee));
     let badges = client.badges_of(&event_id, &attendee);
@@ -128,6 +128,26 @@ fn claim_issues_a_badge_to_the_caller() {
 }
 
 #[test]
+fn claim_rejects_the_raw_code_in_place_of_its_digest() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (_, client) = setup(&env);
+    let organizer = Address::generate(&env);
+    let attendee = Address::generate(&env);
+    let event_id = setup_event(&env, &client, &organizer);
+
+    // `synthetic_hash(0xC7)` carries the same 32 bytes as the raw claim code;
+    // the event stores their SHA-256 instead. Handing the contract the bytes
+    // themselves must be a mismatch — this is what keeps the code out of the
+    // transaction, and it fails if anyone restores hashing on-chain.
+    assert_eq!(
+        client.try_claim(&event_id, &attendee, &synthetic_hash(&env, 0xC7)),
+        Err(Ok(Error::ClaimCodeMismatch))
+    );
+    assert!(!client.has_badge(&event_id, &attendee));
+}
+
+#[test]
 fn claim_extends_the_badge_ttl() {
     let env = Env::default();
     env.mock_all_auths();
@@ -136,7 +156,7 @@ fn claim_extends_the_badge_ttl() {
     let attendee = Address::generate(&env);
     let event_id = setup_event(&env, &client, &organizer);
 
-    client.claim(&event_id, &attendee, &synthetic_code(&env, 0xC7));
+    client.claim(&event_id, &attendee, &setup_claim_code_hash(&env));
 
     let ttl = persistent_ttl(&env, &contract_id, &DataKey::Badge(event_id, attendee));
     assert!(
@@ -156,12 +176,12 @@ fn claim_after_the_deadline_fails_but_revoke_still_works() {
     let attendee = Address::generate(&env);
     let event_id = setup_event(&env, &client, &organizer);
 
-    client.claim(&event_id, &attendee, &synthetic_code(&env, 0xC7));
+    client.claim(&event_id, &attendee, &setup_claim_code_hash(&env));
     // Move past the deadline (7 days) but stay inside the record's TTL.
     advance_time(&env, 31 * DAY_SECONDS);
 
     assert_eq!(
-        client.try_claim(&event_id, &attendee, &synthetic_code(&env, 0xC7)),
+        client.try_claim(&event_id, &attendee, &setup_claim_code_hash(&env)),
         Err(Ok(Error::EventClosed))
     );
 
@@ -198,8 +218,8 @@ fn a_second_attendee_can_claim_with_the_same_code() {
     let second = Address::generate(&env);
     let event_id = setup_event(&env, &client, &organizer);
 
-    client.claim(&event_id, &first, &synthetic_code(&env, 0xC7));
-    client.claim(&event_id, &second, &synthetic_code(&env, 0xC7));
+    client.claim(&event_id, &first, &setup_claim_code_hash(&env));
+    client.claim(&event_id, &second, &setup_claim_code_hash(&env));
 
     assert!(client.has_badge(&event_id, &first));
     assert!(client.has_badge(&event_id, &second));
@@ -283,7 +303,7 @@ fn claim_requires_the_attendee_signature() {
     client.claim(
         &event_id,
         &Address::generate(&env),
-        &synthetic_code(&env, 0xC7),
+        &setup_claim_code_hash(&env),
     );
 }
 
@@ -315,9 +335,9 @@ fn revoke_requires_the_organizer_signature() {
         &contract_id,
         &attendee,
         event_id,
-        &synthetic_code(&env, 0xC7),
+        &setup_claim_code_hash(&env),
     );
-    client.claim(&event_id, &attendee, &synthetic_code(&env, 0xC7));
+    client.claim(&event_id, &attendee, &setup_claim_code_hash(&env));
 
     // ...but nobody has authorized this revoke.
     client.revoke(&event_id, &attendee);
@@ -338,9 +358,9 @@ fn revoke_rejects_a_signature_from_someone_other_than_the_organizer() {
         &contract_id,
         &attendee,
         event_id,
-        &synthetic_code(&env, 0xC7),
+        &setup_claim_code_hash(&env),
     );
-    client.claim(&event_id, &attendee, &synthetic_code(&env, 0xC7));
+    client.claim(&event_id, &attendee, &setup_claim_code_hash(&env));
 
     // A stranger authorizes the revoke invocation, but the contract demands
     // the organizer's signature, so the call must still fail.
@@ -401,7 +421,7 @@ fn lifecycle_publishes_documented_events() {
         ]
     );
 
-    client.claim(&event_id, &attendee, &code);
+    client.claim(&event_id, &attendee, &hash_of(&env, &code));
     assert_eq!(
         env.events().all().filter_by_contract(&contract_id),
         vec![

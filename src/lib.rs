@@ -10,7 +10,7 @@ mod error_paths;
 mod test;
 mod test_helpers;
 
-use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, Vec};
+use soroban_sdk::{contract, contractimpl, Address, BytesN, Env, Vec};
 
 use crate::types::{Badge, Error, Event};
 
@@ -44,8 +44,14 @@ impl Contract {
         )
     }
 
-    /// Claims a badge for `attendee` using a claim code whose SHA-256 must
-    /// match the event's stored hash.
+    /// Claims a badge for `attendee` by presenting `claim_code_hash`, the
+    /// SHA-256 of the claim code, which must match the event's stored hash.
+    ///
+    /// The raw claim code is never passed to the chain: publishing it here
+    /// would put a reusable secret in every transaction and in the permanent
+    /// ledger. The digest is safe to publish because it is already readable
+    /// from `get_event`, and SHA-256 does not yield the code. See
+    /// `docs/decisions/0002-claim-code-not-in-transactions.md`.
     ///
     /// Errors: [`Error::EventNotFound`], [`Error::CapReached`],
     /// [`Error::EventClosed`], [`Error::AlreadyHeld`],
@@ -54,9 +60,9 @@ impl Contract {
         env: Env,
         event_id: u64,
         attendee: Address,
-        claim_code: Bytes,
+        claim_code_hash: BytesN<32>,
     ) -> Result<(), Error> {
-        badges::claim(&env, event_id, attendee, &claim_code)
+        badges::claim(&env, event_id, attendee, &claim_code_hash)
     }
 
     /// Awards a badge directly, for attendees who cannot claim. Organizer-authorized.

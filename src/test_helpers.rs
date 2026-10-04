@@ -23,17 +23,22 @@ pub fn setup(env: &Env) -> (Address, ContractClient<'_>) {
 }
 
 /// Creates an event with a default cap of 100 and a deadline one day out.
-/// The claim code hash is `code * 32` — tests hash the same bytes when they
-/// need a matching code.
+/// The claim code hash is `SHA-256(32 x 0xC7)`, so tests pass
+/// `setup_claim_code_hash(env)` to `claim` when they need a matching digest.
 pub fn setup_event(env: &Env, client: &ContractClient<'_>, organizer: &Address) -> u64 {
     let now = env.ledger().timestamp();
     client.create_event(
         organizer,
         &synthetic_hash(env, 0xA1),
-        &hash_of(env, &synthetic_code(env, 0xC7)),
+        &setup_claim_code_hash(env),
         &100,
         &(now + DAY_SECONDS),
     )
+}
+
+/// The digest that claims the event created by `setup_event`.
+pub fn setup_claim_code_hash(env: &Env) -> BytesN<32> {
+    hash_of(env, &synthetic_code(env, 0xC7))
 }
 
 /// A synthetic 32-byte hash. Tests never use a value derived from a real
@@ -104,14 +109,14 @@ pub fn mock_attendee_auth_for_claim(
     contract_id: &Address,
     attendee: &Address,
     event_id: u64,
-    claim_code: &Bytes,
+    claim_code_hash: &BytesN<32>,
 ) {
     env.mock_auths(&[MockAuth {
         address: attendee,
         invoke: &MockAuthInvoke {
             contract: contract_id,
             fn_name: "claim",
-            args: (event_id, attendee.clone(), claim_code.clone()).into_val(env),
+            args: (event_id, attendee.clone(), claim_code_hash.clone()).into_val(env),
             sub_invokes: &[],
         },
     }]);

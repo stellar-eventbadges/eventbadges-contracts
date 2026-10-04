@@ -27,7 +27,7 @@ pub enum Error {
     // 10-29: Lifecycle & timing
     /// The event's claim window has closed (`closes_at` passed).
     EventClosed = 10,
-    /// The supplied claim code does not hash to the event's claim code hash.
+    /// The presented claim code hash does not match the event's stored hash.
     ClaimCodeMismatch = 11,
     /// The event already holds `max_claims` badges.
     CapReached = 12,

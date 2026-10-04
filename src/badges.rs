@@ -13,7 +13,7 @@
 //! builds with `overflow-checks = true` (see `Cargo.toml`), so an overflow
 //! traps instead of wrapping silently.
 
-use soroban_sdk::{Address, Bytes, BytesN, Env, Vec};
+use soroban_sdk::{Address, BytesN, Env, Vec};
 
 use crate::storage::{extend_instance_ttl, extend_record_ttl, DataKey};
 use crate::types::{Badge, BadgeAwarded, BadgeClaimed, BadgeRevoked, Error, Event, EventCreated};
@@ -139,10 +139,21 @@ pub fn create_event(
     Ok(event_id)
 }
 
-/// Claims a badge for `attendee` using a claim code whose SHA-256 must match
-/// the event's stored hash. One badge per attendee per event; the window must
-/// still be open and the cap not reached.
-pub fn claim(env: &Env, event_id: u64, attendee: Address, claim_code: &Bytes) -> Result<(), Error> {
+/// Claims a badge for `attendee` by presenting `claim_code_hash`, which must
+/// equal the event's stored hash. One badge per attendee per event; the window
+/// must still be open and the cap not reached.
+///
+/// The caller hashes the claim code off-chain and sends the digest, so the raw
+/// secret never rides in the transaction. The check is a direct comparison
+/// rather than a hash, because the code is not here to hash. The digest is
+/// already public through `get_event`, so publishing it reveals nothing new.
+/// See `docs/decisions/0002-claim-code-not-in-transactions.md`.
+pub fn claim(
+    env: &Env,
+    event_id: u64,
+    attendee: Address,
+    claim_code_hash: &BytesN<32>,
+) -> Result<(), Error> {
     attendee.require_auth();
 
     let mut event = load_event(env, event_id)?;
@@ -156,8 +167,7 @@ pub fn claim(env: &Env, event_id: u64, attendee: Address, claim_code: &Bytes) ->
         return Err(Error::AlreadyHeld);
     }
 
-    let digest = env.crypto().sha256(claim_code);
-    if BytesN::from(digest) != event.claim_code_hash {
+    if *claim_code_hash != event.claim_code_hash {
         return Err(Error::ClaimCodeMismatch);
     }
 

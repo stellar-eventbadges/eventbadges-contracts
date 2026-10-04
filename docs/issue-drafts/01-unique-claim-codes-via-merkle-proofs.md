@@ -15,8 +15,11 @@ event. Real check-in flows need a code that only one attendee can redeem.
 - The organizer commits to a Merkle root of per-attendee code hashes at
   `create_event` time (a new field or a `create_event_v2`; the ADR records the
   choice).
-- `claim` takes a Merkle proof alongside the code and verifies membership
-  before minting.
+- `claim` takes a Merkle proof alongside the presented code hash and verifies
+  membership before minting. (The hash-only argument is
+  [decisions/0002](../decisions/0002-claim-code-not-in-transactions.md); a
+  per-attendee design must keep that property, so the proof proves membership
+  of a digest, not of the raw code.)
 - Keep the existing `claim_code_hash` path working or replace it explicitly —
   do not leave two claim systems half-alive.
 - Out of scope: anything about the app's QR flow.

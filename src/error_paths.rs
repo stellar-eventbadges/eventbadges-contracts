@@ -10,7 +10,8 @@ use super::*;
 use soroban_sdk::{testutils::Address as _, Address, Env};
 
 use crate::test_helpers::{
-    advance_time, hash_of, setup, setup_event, synthetic_code, synthetic_hash, DAY_SECONDS,
+    advance_time, hash_of, setup, setup_claim_code_hash, setup_event, synthetic_code,
+    synthetic_hash, DAY_SECONDS,
 };
 
 #[test]
@@ -55,7 +56,7 @@ fn error_path_event_closed() {
     advance_time(&env, DAY_SECONDS + 60);
 
     assert_eq!(
-        client.try_claim(&event_id, &attendee, &synthetic_code(&env, 0xC7)),
+        client.try_claim(&event_id, &attendee, &setup_claim_code_hash(&env)),
         Err(Ok(Error::EventClosed))
     );
     assert_eq!(
@@ -73,9 +74,14 @@ fn error_path_claim_code_mismatch() {
     let event_id = setup_event(&env, &client, &organizer);
     let attendee = Address::generate(&env);
 
-    // The event's hash came from seed 0xC7; this code hashes differently.
+    // The event stores SHA-256(32 x 0xC7); this is the digest of a different
+    // code, so the presented digest does not match.
     assert_eq!(
-        client.try_claim(&event_id, &attendee, &synthetic_code(&env, 0x01)),
+        client.try_claim(
+            &event_id,
+            &attendee,
+            &hash_of(&env, &synthetic_code(&env, 0x01))
+        ),
         Err(Ok(Error::ClaimCodeMismatch))
     );
 }
@@ -98,14 +104,14 @@ fn error_path_cap_reached() {
     client.claim(
         &event_id,
         &Address::generate(&env),
-        &synthetic_code(&env, 0xC7),
+        &setup_claim_code_hash(&env),
     );
 
     assert_eq!(
         client.try_claim(
             &event_id,
             &Address::generate(&env),
-            &synthetic_code(&env, 0xC7)
+            &setup_claim_code_hash(&env)
         ),
         Err(Ok(Error::CapReached))
     );
@@ -124,10 +130,10 @@ fn error_path_already_held() {
     let event_id = setup_event(&env, &client, &organizer);
     let attendee = Address::generate(&env);
 
-    client.claim(&event_id, &attendee, &synthetic_code(&env, 0xC7));
+    client.claim(&event_id, &attendee, &setup_claim_code_hash(&env));
 
     assert_eq!(
-        client.try_claim(&event_id, &attendee, &synthetic_code(&env, 0xC7)),
+        client.try_claim(&event_id, &attendee, &setup_claim_code_hash(&env)),
         Err(Ok(Error::AlreadyHeld))
     );
     assert_eq!(

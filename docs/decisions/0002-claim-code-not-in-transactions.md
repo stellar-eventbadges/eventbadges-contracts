@@ -1,7 +1,7 @@
 # 0002. Keep the raw claim code out of the claim transaction
 
 Date: 2026-10-03
-Status: proposed — not implemented, awaiting a maintainer decision
+Status: accepted — implemented 2026-10-04
 
 ## Context
 
@@ -139,7 +139,7 @@ Consequences of the type change, all of them desirable:
   published, which is what makes the privacy notice's second section
   unnecessary.
 
-### The app side, when this is implemented
+### The app side
 
 Three lines, and the helper already exists:
 
@@ -173,6 +173,25 @@ code is not secret to anyone who reads the chain, and a code shared too widely
 can be used to take a slot. `eventbadges-app/docs/attendee-notice.md`,
 `docs/claim-codes.md`, the app README and the docs book's privacy page all need
 updating in the same change, or they become the new drift.
+
+## Implemented
+
+Landed 2026-10-04, contracts and app in the same push:
+
+- `claim` in `src/lib.rs` and `src/badges.rs` takes
+  `claim_code_hash: BytesN<32>` and compares it directly;
+  `env.crypto().sha256` is no longer called at claim time, and `Bytes` is gone
+  from both modules.
+- `src/test.rs`, `src/error_paths.rs` and `src/test_helpers.rs` pass digests;
+  `setup_claim_code_hash` is the shared fixture and
+  `claim_rejects_the_raw_code_in_place_of_its_digest` pins the new semantics,
+  so a revert to on-chain hashing fails the suite.
+- `ERRORS.md` and `src/types.rs` reword `ClaimCodeMismatch` (code 11
+  unchanged, no new variant); `docs/claim-codes.md` and the README describe
+  the digest hand-off and say plainly that the digest is public.
+- The app hashes before building the transaction; the attendee notice, app
+  README and the docs book were corrected in the same change, so no page
+  still says the raw code rides in the claim transaction.
 
 ## Consequences
 

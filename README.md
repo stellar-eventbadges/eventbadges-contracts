@@ -13,9 +13,12 @@ happened. Nothing here has run against a live network.**
   the organizer records an event with an opaque name hash, the SHA-256 of a
   random claim code, a badge cap (1–10,000) and a claim deadline. Organizer-
   authorized. Returns the event id.
-- `claim(event_id, attendee, claim_code)`: the attendee claims their own badge
-  by presenting a code whose SHA-256 matches the stored hash. One badge per
-  attendee per event; fails after `closes_at` or when the cap is reached.
+- `claim(event_id, attendee, claim_code_hash)`: the attendee claims their own
+  badge by presenting the claim code's SHA-256, which must equal the stored
+  hash. The raw code is never sent to the chain — see
+  [decisions/0002](docs/decisions/0002-claim-code-not-in-transactions.md). One
+  badge per attendee per event; fails after `closes_at` or when the cap is
+  reached.
 - `award(event_id, attendee)`: the organizer issues a badge directly, for
   attendees who cannot claim. Same window and cap rules.
 - `revoke(event_id, attendee)`: the organizer removes a badge. Allowed at any
@@ -31,8 +34,9 @@ happened. Nothing here has run against a live network.**
 
 No names, emails or personal IDs touch the chain. `name_hash` and
 `claim_code_hash` are opaque hashes; claim codes are random secrets generated
-off-chain (see [docs/claim-codes.md](docs/claim-codes.md)). Test fixtures use
-synthetic bytes only.
+off-chain and their digests are all the contract ever receives (see
+[docs/claim-codes.md](docs/claim-codes.md)). Test fixtures use synthetic bytes
+only.
 
 ## Structure
 

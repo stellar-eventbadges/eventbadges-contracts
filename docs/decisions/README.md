@@ -28,7 +28,7 @@ What this makes easy, what it makes hard, and what would change our mind.
   2026-10-02): no OpenZeppelin dependency; badges are a purpose-written
   non-transferable claim registry on plain `soroban-sdk 28`, with no transfer,
   approve or operator entrypoint.
-- **0002 — Keep the raw claim code out of the claim transaction** (*proposed*,
-  2026-10-03, **not implemented**): `claim` takes the claim code's SHA-256
-  instead of the code itself. Separate from Merkle per-attendee codes, which
-  fix sharing rather than the transaction's contents.
+- **0002 — Keep the raw claim code out of the claim transaction** (*accepted*,
+  2026-10-03, **implemented 2026-10-04**): `claim` takes the claim code's
+  SHA-256 instead of the code itself. Separate from Merkle per-attendee codes,
+  which fix sharing rather than the transaction's contents.
