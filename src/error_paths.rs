@@ -56,7 +56,12 @@ fn error_path_event_closed() {
     advance_time(&env, DAY_SECONDS + 60);
 
     assert_eq!(
-        client.try_claim(&event_id, &attendee, &setup_claim_code_hash(&env)),
+        client.try_claim(
+            &event_id,
+            &attendee,
+            &setup_claim_code_hash(&env),
+            &Vec::new(&env)
+        ),
         Err(Ok(Error::EventClosed))
     );
     assert_eq!(
@@ -66,7 +71,7 @@ fn error_path_event_closed() {
 }
 
 #[test]
-fn error_path_claim_code_mismatch() {
+fn error_path_claim_proof_invalid() {
     let env = Env::default();
     env.mock_all_auths();
     let (_, client) = setup(&env);
@@ -74,15 +79,35 @@ fn error_path_claim_code_mismatch() {
     let event_id = setup_event(&env, &client, &organizer);
     let attendee = Address::generate(&env);
 
-    // The event stores SHA-256(32 x 0xC7); this is the digest of a different
-    // code, so the presented digest does not match.
+    // The event's root is SHA-256(32 x 0xC7). This presents a different
+    // code's hash, which no proof can fold into that root.
     assert_eq!(
         client.try_claim(
             &event_id,
             &attendee,
-            &hash_of(&env, &synthetic_code(&env, 0x01))
+            &hash_of(&env, &synthetic_code(&env, 0x01)),
+            &Vec::new(&env)
         ),
-        Err(Ok(Error::ClaimCodeMismatch))
+        Err(Ok(Error::ClaimProofInvalid))
+    );
+}
+
+#[test]
+fn error_path_claim_code_used() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (_, client) = setup(&env);
+    let organizer = Address::generate(&env);
+    let event_id = setup_event(&env, &client, &organizer);
+    let leaf = setup_claim_code_hash(&env);
+
+    client.claim(&event_id, &Address::generate(&env), &leaf, &Vec::new(&env));
+
+    // A second address presenting the same leaf: the one place that leaf paid
+    // for is gone, even though this address holds no badge.
+    assert_eq!(
+        client.try_claim(&event_id, &Address::generate(&env), &leaf, &Vec::new(&env)),
+        Err(Ok(Error::ClaimCodeUsed))
     );
 }
 
@@ -105,13 +130,15 @@ fn error_path_cap_reached() {
         &event_id,
         &Address::generate(&env),
         &setup_claim_code_hash(&env),
+        &Vec::new(&env),
     );
 
     assert_eq!(
         client.try_claim(
             &event_id,
             &Address::generate(&env),
-            &setup_claim_code_hash(&env)
+            &setup_claim_code_hash(&env),
+            &Vec::new(&env)
         ),
         Err(Ok(Error::CapReached))
     );
@@ -130,10 +157,20 @@ fn error_path_already_held() {
     let event_id = setup_event(&env, &client, &organizer);
     let attendee = Address::generate(&env);
 
-    client.claim(&event_id, &attendee, &setup_claim_code_hash(&env));
+    client.claim(
+        &event_id,
+        &attendee,
+        &setup_claim_code_hash(&env),
+        &Vec::new(&env),
+    );
 
     assert_eq!(
-        client.try_claim(&event_id, &attendee, &setup_claim_code_hash(&env)),
+        client.try_claim(
+            &event_id,
+            &attendee,
+            &setup_claim_code_hash(&env),
+            &Vec::new(&env)
+        ),
         Err(Ok(Error::AlreadyHeld))
     );
     assert_eq!(

@@ -31,12 +31,19 @@ pub enum Error {
     // 10-29: Lifecycle & timing
     /// The event's claim window has closed (`closes_at` passed).
     EventClosed = 10,
-    /// The presented claim code hash does not match the event's stored hash.
-    ClaimCodeMismatch = 11,
+    // Code 11 is deliberately unused: it was `ClaimCodeMismatch`, which
+    // described one shared claim code per event and has no failure path since
+    // per-attendee codes (docs/decisions/0003). A proof failure and a spent
+    // code are different problems with different next actions, so neither
+    // inherits the number.
     /// The event already holds `max_claims` badges.
     CapReached = 12,
     /// The attendee already holds a badge for this event.
     AlreadyHeld = 13,
+    /// The presented leaf does not connect to the event's claim root.
+    ClaimProofInvalid = 14,
+    /// The presented leaf has already been spent by an earlier claim.
+    ClaimCodeUsed = 15,
     // 30-49: Validation
     /// `create_event` was called with a cap larger than the contract allows.
     MaxClaimsTooLarge = 30,
@@ -46,10 +53,11 @@ pub enum Error {
 
 /// An event recorded on-chain, with its claim window and cap.
 ///
-/// `name_hash` and `claim_code_hash` are opaque 32-byte hashes: the organizer
-/// derives them off-chain and they must never encode personal data. The claim
-/// code hash is the SHA-256 of a random secret the organizer distributes
-/// out-of-band — see `docs/claim-codes.md`.
+/// `name_hash` and `claim_root` are opaque 32-byte hashes: the organizer
+/// derives them off-chain and they must never encode personal data.
+/// `claim_root` is the Merkle root over one leaf per attendee, where each leaf
+/// is the SHA-256 of that attendee's random code — see `docs/claim-codes.md`
+/// and `docs/decisions/0003-per-attendee-claim-codes.md`.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Event {
@@ -59,8 +67,10 @@ pub struct Event {
     pub organizer: Address,
     /// Opaque hash of the event name (no personal data).
     pub name_hash: BytesN<32>,
-    /// SHA-256 of the secret claim code; checked on every claim.
-    pub claim_code_hash: BytesN<32>,
+    /// Merkle root over the SHA-256 of each attendee's claim code; every claim
+    /// verifies its proof against this. Public by design: the leaves are not
+    /// derivable from it, so it does not hand anyone the means to claim.
+    pub claim_root: BytesN<32>,
     /// Maximum badges this event can issue.
     pub max_claims: u32,
     /// Claim deadline, in Unix seconds (the same clock as

@@ -7,7 +7,7 @@ use soroban_sdk::{
         storage::{Instance as _, Persistent as _},
         Ledger as _, MockAuth, MockAuthInvoke,
     },
-    Address, Bytes, BytesN, Env, IntoVal, Val,
+    Address, Bytes, BytesN, Env, IntoVal, Val, Vec,
 };
 
 use crate::{storage::SECONDS_PER_LEDGER, Contract, ContractClient};
@@ -23,8 +23,8 @@ pub fn setup(env: &Env) -> (Address, ContractClient<'_>) {
 }
 
 /// Creates an event with a default cap of 100 and a deadline one day out.
-/// The claim code hash is `SHA-256(32 x 0xC7)`, so tests pass
-/// `setup_claim_code_hash(env)` to `claim` when they need a matching digest.
+/// The claim root is `SHA-256(32 x 0xC7)` — a one-leaf tree, so the leaf *is*
+/// the root and its proof is empty.
 pub fn setup_event(env: &Env, client: &ContractClient<'_>, organizer: &Address) -> u64 {
     let now = env.ledger().timestamp();
     client.create_event(
@@ -36,7 +36,8 @@ pub fn setup_event(env: &Env, client: &ContractClient<'_>, organizer: &Address) 
     )
 }
 
-/// The digest that claims the event created by `setup_event`.
+/// The leaf — and, for the one-attendee event `setup_event` creates, the root —
+/// that a claim against that event presents. Its proof is empty.
 pub fn setup_claim_code_hash(env: &Env) -> BytesN<32> {
     hash_of(env, &synthetic_code(env, 0xC7))
 }
@@ -109,17 +110,100 @@ pub fn mock_attendee_auth_for_claim(
     contract_id: &Address,
     attendee: &Address,
     event_id: u64,
-    claim_code_hash: &BytesN<32>,
+    leaf_hash: &BytesN<32>,
+    proof: &Vec<BytesN<32>>,
 ) {
     env.mock_auths(&[MockAuth {
         address: attendee,
         invoke: &MockAuthInvoke {
             contract: contract_id,
             fn_name: "claim",
-            args: (event_id, attendee.clone(), claim_code_hash.clone()).into_val(env),
+            args: (event_id, attendee.clone(), leaf_hash.clone(), proof.clone()).into_val(env),
             sub_invokes: &[],
         },
     }]);
+}
+
+/// One Merkle step, mirroring `hash_pair` in `src/badges.rs`: the two nodes are
+/// sorted before hashing, so a proof is an unordered list of siblings.
+pub fn merkle_pair(env: &Env, a: &BytesN<32>, b: &BytesN<32>) -> BytesN<32> {
+    let (low, high) = if a <= b { (a, b) } else { (b, a) };
+    let mut input = Bytes::from_array(env, &low.to_array());
+    input.extend_from_array(&high.to_array());
+    BytesN::from(env.crypto().sha256(&input))
+}
+
+/// Every level of a Merkle tree over `leaves`, leaf level first. An odd level
+/// is closed by hashing its last node with itself, which is what keeps every
+/// proof `ceil(log2(leaves))` long.
+fn merkle_levels(env: &Env, leaves: &Vec<BytesN<32>>) -> Vec<Vec<BytesN<32>>> {
+    let mut levels = Vec::new(env);
+    levels.push_back(leaves.clone());
+
+    while levels.get(levels.len() - 1).unwrap().len() > 1 {
+        let current = levels.get(levels.len() - 1).unwrap();
+        let mut next = Vec::new(env);
+        let mut index = 0;
+        while index < current.len() {
+            let left = current.get(index).unwrap();
+            let right = if index + 1 < current.len() {
+                current.get(index + 1).unwrap()
+            } else {
+                left.clone()
+            };
+            next.push_back(merkle_pair(env, &left, &right));
+            index += 2;
+        }
+        levels.push_back(next);
+    }
+
+    levels
+}
+
+/// The proof for the leaf at `index`: one sibling per level, where a lone node
+/// acts as its own sibling.
+fn merkle_proof(env: &Env, levels: &Vec<Vec<BytesN<32>>>, mut index: u32) -> Vec<BytesN<32>> {
+    let mut proof = Vec::new(env);
+
+    for depth in 0..levels.len() {
+        let level = levels.get(depth).unwrap();
+        if level.len() == 1 {
+            break;
+        }
+        let sibling = index ^ 1;
+        proof.push_back(if sibling < level.len() {
+            level.get(sibling).unwrap()
+        } else {
+            level.get(index).unwrap()
+        });
+        index >>= 1;
+    }
+
+    proof
+}
+
+/// A ready-made event tree: `seeds` name one claim code per attendee, so the
+/// leaf for each is `SHA-256(32 x seed)` — exactly `hashClaimCode`'s output in
+/// the app. Returns the root and each attendee's `(leaf, proof)`, in seed
+/// order.
+pub fn merkle_tree(env: &Env, seeds: &[u8]) -> (BytesN<32>, Vec<(BytesN<32>, Vec<BytesN<32>>)>) {
+    let mut leaves = Vec::new(env);
+    for seed in seeds {
+        leaves.push_back(hash_of(env, &synthetic_code(env, *seed)));
+    }
+
+    let levels = merkle_levels(env, &leaves);
+    let root = levels.get(levels.len() - 1).unwrap().get(0).unwrap();
+
+    let mut entries = Vec::new(env);
+    for index in 0..leaves.len() {
+        entries.push_back((
+            leaves.get(index).unwrap(),
+            merkle_proof(env, &levels, index),
+        ));
+    }
+
+    (root, entries)
 }
 
 /// Remaining TTL of a persistent entry, read inside the contract's context.

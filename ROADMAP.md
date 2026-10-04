@@ -21,8 +21,9 @@ What is next for `eventbadges-contracts`, in order. Anything not listed as done 
       organizers create events and attendees claim a non-transferable
       attendance badge. Entrypoints: `create_event`, `claim`, `award`,
       `revoke`, `has_badge`, `badges_of` (bounded), `get_event`; transfers
-      must always fail. `name_hash` and `claim_code_hash` stay hashes; no
-      personal data on-chain. Planned per the program stack: thin `lib.rs`;
+      must always fail. `name_hash` and the claim commitment (`claim_root`
+      since [ADR 0003](docs/decisions/0003-per-attendee-claim-codes.md)) stay
+      hashes; no personal data on-chain. Planned per the program stack: thin `lib.rs`;
       `types.rs` (error enum, stored types, events); `storage.rs`;
       `error_paths.rs` with one test per variant; `test.rs` lifecycle tests;
       `ERRORS.md` + `scripts/check-errors.mjs` and its tests;
@@ -37,7 +38,17 @@ What is next for `eventbadges-contracts`, in order. Anything not listed as done 
 Listed there as the v0 boundary; each will get a draft issue when the v0
 contract lands:
 
-- Unique per-attendee claim codes (research Merkle proofs first).
+- ~~Unique per-attendee claim codes (research Merkle proofs first).~~ **Built
+  2026-10-04** — [ADR 0003](docs/decisions/0003-per-attendee-claim-codes.md)
+  and [draft 01](docs/issue-drafts/01-unique-claim-codes-via-merkle-proofs.md):
+  one leaf per attendee, a stored root, and a spent-leaf record so one code
+  takes one place. The leaf formula is still unbound, so a leaked code can be
+  used by whoever holds it first.
+- Address-bound leaves (`SHA-256(address || code)`), which would make a leaked
+  code useless to anyone else and remove that last exposure. Rejected for now
+  in ADR 0003: it needs every attendee's address before the event is created,
+  and the documented flow hands codes out at the door. It waits on a product
+  decision about pre-registration, not on any contract work.
 - Badge metadata and images following the OpenZeppelin metadata approach.
 - Batch awarding.
 - Event series and streak badges.

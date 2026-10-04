@@ -32,3 +32,8 @@ What this makes easy, what it makes hard, and what would change our mind.
   2026-10-03, **implemented 2026-10-04**): `claim` takes the claim code's
   SHA-256 instead of the code itself. Separate from Merkle per-attendee codes,
   which fix sharing rather than the transaction's contents.
+- **0003 — Per-attendee claim codes via Merkle proofs** (*accepted*,
+  2026-10-04, **implemented 2026-10-04**): one leaf per attendee, a stored
+  root, a sorted-pair tree and a spent-leaf record, so one code takes one
+  place and the public root hands nobody the means to claim. Address-bound
+  leaves are recorded as the rejected alternative and the next step.

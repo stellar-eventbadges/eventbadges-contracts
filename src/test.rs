@@ -9,9 +9,10 @@ use soroban_sdk::{
     vec, Address, Env, IntoVal, Symbol,
 };
 
+use crate::badges::{MAX_CLAIMS_PER_EVENT, MAX_PROOF_DEPTH};
 use crate::storage::{DataKey, MIN_TTL_LEDGERS, SECONDS_PER_LEDGER};
 use crate::test_helpers::{
-    advance_time, hash_of, instance_ttl, mock_attendee_auth_for_claim,
+    advance_time, hash_of, instance_ttl, merkle_tree, mock_attendee_auth_for_claim,
     mock_organizer_auth_for_create_event, persistent_ttl, setup, setup_claim_code_hash,
     setup_event, synthetic_code, synthetic_hash, to_val, DAY_SECONDS,
 };
@@ -116,7 +117,12 @@ fn claim_issues_a_badge_to_the_caller() {
     let attendee = Address::generate(&env);
     let event_id = setup_event(&env, &client, &organizer);
 
-    client.claim(&event_id, &attendee, &setup_claim_code_hash(&env));
+    client.claim(
+        &event_id,
+        &attendee,
+        &setup_claim_code_hash(&env),
+        &Vec::new(&env),
+    );
 
     assert!(client.has_badge(&event_id, &attendee));
     let badges = client.badges_of(&event_id, &attendee);
@@ -128,7 +134,7 @@ fn claim_issues_a_badge_to_the_caller() {
 }
 
 #[test]
-fn claim_rejects_the_raw_code_in_place_of_its_digest() {
+fn claim_rejects_the_raw_code_as_a_leaf() {
     let env = Env::default();
     env.mock_all_auths();
     let (_, client) = setup(&env);
@@ -137,14 +143,47 @@ fn claim_rejects_the_raw_code_in_place_of_its_digest() {
     let event_id = setup_event(&env, &client, &organizer);
 
     // `synthetic_hash(0xC7)` carries the same 32 bytes as the raw claim code;
-    // the event stores their SHA-256 instead. Handing the contract the bytes
-    // themselves must be a mismatch — this is what keeps the code out of the
+    // every leaf is the SHA-256 of its code. Handing the contract the bytes
+    // themselves must fail — this is what keeps the code out of the
     // transaction, and it fails if anyone restores hashing on-chain.
     assert_eq!(
-        client.try_claim(&event_id, &attendee, &synthetic_hash(&env, 0xC7)),
-        Err(Ok(Error::ClaimCodeMismatch))
+        client.try_claim(
+            &event_id,
+            &attendee,
+            &synthetic_hash(&env, 0xC7),
+            &Vec::new(&env)
+        ),
+        Err(Ok(Error::ClaimProofInvalid))
     );
     assert!(!client.has_badge(&event_id, &attendee));
+}
+
+#[test]
+fn a_single_leaf_tree_claims_with_an_empty_proof() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (_, client) = setup(&env);
+    let organizer = Address::generate(&env);
+    let attendee = Address::generate(&env);
+    let now = env.ledger().timestamp();
+
+    // Pins the documented leaf formula: the leaf of a code is SHA-256 of the
+    // code, exactly what `hashClaimCode` produces in the app. A one-attendee
+    // event's root is that leaf, so the proof is empty.
+    let code = synthetic_code(&env, 0x5A);
+    let leaf: BytesN<32> = env.crypto().sha256(&code).into();
+    let event_id = client.create_event(
+        &organizer,
+        &synthetic_hash(&env, 0xA1),
+        &leaf,
+        &1,
+        &(now + DAY_SECONDS),
+    );
+
+    client.claim(&event_id, &attendee, &leaf, &Vec::new(&env));
+
+    assert!(client.has_badge(&event_id, &attendee));
+    assert_eq!(client.get_event(&event_id).claim_count, 1);
 }
 
 #[test]
@@ -156,7 +195,12 @@ fn claim_extends_the_badge_ttl() {
     let attendee = Address::generate(&env);
     let event_id = setup_event(&env, &client, &organizer);
 
-    client.claim(&event_id, &attendee, &setup_claim_code_hash(&env));
+    client.claim(
+        &event_id,
+        &attendee,
+        &setup_claim_code_hash(&env),
+        &Vec::new(&env),
+    );
 
     let ttl = persistent_ttl(&env, &contract_id, &DataKey::Badge(event_id, attendee));
     assert!(
@@ -176,12 +220,22 @@ fn claim_after_the_deadline_fails_but_revoke_still_works() {
     let attendee = Address::generate(&env);
     let event_id = setup_event(&env, &client, &organizer);
 
-    client.claim(&event_id, &attendee, &setup_claim_code_hash(&env));
+    client.claim(
+        &event_id,
+        &attendee,
+        &setup_claim_code_hash(&env),
+        &Vec::new(&env),
+    );
     // Move past the deadline (7 days) but stay inside the record's TTL.
     advance_time(&env, 31 * DAY_SECONDS);
 
     assert_eq!(
-        client.try_claim(&event_id, &attendee, &setup_claim_code_hash(&env)),
+        client.try_claim(
+            &event_id,
+            &attendee,
+            &setup_claim_code_hash(&env),
+            &Vec::new(&env)
+        ),
         Err(Ok(Error::EventClosed))
     );
 
@@ -209,21 +263,218 @@ fn award_issues_a_badge_without_a_claim_code() {
 }
 
 #[test]
-fn a_second_attendee_can_claim_with_the_same_code() {
+fn each_attendee_claims_with_their_own_leaf() {
     let env = Env::default();
     env.mock_all_auths();
     let (_, client) = setup(&env);
     let organizer = Address::generate(&env);
     let first = Address::generate(&env);
     let second = Address::generate(&env);
-    let event_id = setup_event(&env, &client, &organizer);
+    let now = env.ledger().timestamp();
+    let (root, entries) = merkle_tree(&env, &[0x11, 0x22]);
+    let event_id = client.create_event(
+        &organizer,
+        &synthetic_hash(&env, 0xA1),
+        &root,
+        &100,
+        &(now + DAY_SECONDS),
+    );
 
-    client.claim(&event_id, &first, &setup_claim_code_hash(&env));
-    client.claim(&event_id, &second, &setup_claim_code_hash(&env));
+    let (first_leaf, first_proof) = entries.get(0).unwrap();
+    let (second_leaf, second_proof) = entries.get(1).unwrap();
+    client.claim(&event_id, &first, &first_leaf, &first_proof);
+    client.claim(&event_id, &second, &second_leaf, &second_proof);
 
     assert!(client.has_badge(&event_id, &first));
     assert!(client.has_badge(&event_id, &second));
     assert_eq!(client.get_event(&event_id).claim_count, 2);
+}
+
+#[test]
+fn a_leaf_can_take_only_one_place() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (_, client) = setup(&env);
+    let organizer = Address::generate(&env);
+    let holder = Address::generate(&env);
+    let bystander = Address::generate(&env);
+    let now = env.ledger().timestamp();
+    let (root, entries) = merkle_tree(&env, &[0x11, 0x22]);
+    let event_id = client.create_event(
+        &organizer,
+        &synthetic_hash(&env, 0xA1),
+        &root,
+        &100,
+        &(now + DAY_SECONDS),
+    );
+
+    let (leaf, proof) = entries.get(0).unwrap();
+    client.claim(&event_id, &holder, &leaf, &proof);
+
+    // The leaf is in the first transaction's arguments, which are public. A
+    // second address presenting the same leaf must not get a second place:
+    // that is what the nullifier is for.
+    assert_eq!(
+        client.try_claim(&event_id, &bystander, &leaf, &proof),
+        Err(Ok(Error::ClaimCodeUsed))
+    );
+    assert!(!client.has_badge(&event_id, &bystander));
+
+    // The rest of the tree is untouched: only the spent leaf is refused.
+    let (other_leaf, other_proof) = entries.get(1).unwrap();
+    client.claim(&event_id, &bystander, &other_leaf, &other_proof);
+    assert!(client.has_badge(&event_id, &bystander));
+    assert_eq!(client.get_event(&event_id).claim_count, 2);
+}
+
+#[test]
+fn a_leaf_is_not_spent_on_other_events() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (_, client) = setup(&env);
+    let organizer = Address::generate(&env);
+    let first = Address::generate(&env);
+    let second = Address::generate(&env);
+    let now = env.ledger().timestamp();
+    let (root, entries) = merkle_tree(&env, &[0x11, 0x22]);
+    let (leaf, proof) = entries.get(0).unwrap();
+
+    let first_event = client.create_event(
+        &organizer,
+        &synthetic_hash(&env, 0xA1),
+        &root,
+        &100,
+        &(now + DAY_SECONDS),
+    );
+    let second_event = client.create_event(
+        &organizer,
+        &synthetic_hash(&env, 0xA2),
+        &root,
+        &100,
+        &(now + DAY_SECONDS),
+    );
+
+    client.claim(&first_event, &first, &leaf, &proof);
+    // The nullifier is keyed by event as well as leaf, so the same code
+    // committed by a second event is not silently spent by the first.
+    client.claim(&second_event, &second, &leaf, &proof);
+
+    assert!(client.has_badge(&first_event, &first));
+    assert!(client.has_badge(&second_event, &second));
+}
+
+#[test]
+fn an_odd_level_tree_claims_every_leaf() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (_, client) = setup(&env);
+    let organizer = Address::generate(&env);
+    let now = env.ledger().timestamp();
+
+    // Three leaves: the middle level is odd, so the last node is hashed with
+    // itself. Every attendee must still be able to claim.
+    let (root, entries) = merkle_tree(&env, &[0x31, 0x32, 0x33]);
+    let event_id = client.create_event(
+        &organizer,
+        &synthetic_hash(&env, 0xA1),
+        &root,
+        &3,
+        &(now + DAY_SECONDS),
+    );
+
+    for index in 0..entries.len() {
+        let attendee = Address::generate(&env);
+        let (leaf, proof) = entries.get(index).unwrap();
+        client.claim(&event_id, &attendee, &leaf, &proof);
+        assert!(client.has_badge(&event_id, &attendee));
+    }
+
+    assert_eq!(client.get_event(&event_id).claim_count, 3);
+}
+
+#[test]
+fn a_missing_proof_is_refused() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (_, client) = setup(&env);
+    let organizer = Address::generate(&env);
+    let attendee = Address::generate(&env);
+    let now = env.ledger().timestamp();
+    let (root, entries) = merkle_tree(&env, &[0x11, 0x22]);
+    let event_id = client.create_event(
+        &organizer,
+        &synthetic_hash(&env, 0xA1),
+        &root,
+        &100,
+        &(now + DAY_SECONDS),
+    );
+
+    // The leaf is real, but a leaf outside a one-attendee tree needs its
+    // siblings to reach the root.
+    let (leaf, _) = entries.get(0).unwrap();
+    assert_eq!(
+        client.try_claim(&event_id, &attendee, &leaf, &Vec::new(&env)),
+        Err(Ok(Error::ClaimProofInvalid))
+    );
+    assert!(!client.has_badge(&event_id, &attendee));
+}
+
+#[test]
+fn a_proof_from_another_tree_is_refused() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (_, client) = setup(&env);
+    let organizer = Address::generate(&env);
+    let attendee = Address::generate(&env);
+    let now = env.ledger().timestamp();
+    let (root, _) = merkle_tree(&env, &[0x11, 0x22]);
+    let (_, other_entries) = merkle_tree(&env, &[0x91, 0x92]);
+    let event_id = client.create_event(
+        &organizer,
+        &synthetic_hash(&env, 0xA1),
+        &root,
+        &100,
+        &(now + DAY_SECONDS),
+    );
+
+    let (other_leaf, other_proof) = other_entries.get(0).unwrap();
+    assert_eq!(
+        client.try_claim(&event_id, &attendee, &other_leaf, &other_proof),
+        Err(Ok(Error::ClaimProofInvalid))
+    );
+    assert!(!client.has_badge(&event_id, &attendee));
+}
+
+#[test]
+fn a_proof_longer_than_the_depth_bound_is_refused() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (_, client) = setup(&env);
+    let organizer = Address::generate(&env);
+    let attendee = Address::generate(&env);
+    let event_id = setup_event(&env, &client, &organizer);
+
+    // Longer than any tree this contract can hold, so it is refused before a
+    // single hash is computed.
+    let mut proof = Vec::new(&env);
+    for _ in 0..(MAX_PROOF_DEPTH + 1) {
+        proof.push_back(synthetic_hash(&env, 0x5A));
+    }
+
+    assert_eq!(
+        client.try_claim(&event_id, &attendee, &setup_claim_code_hash(&env), &proof),
+        Err(Ok(Error::ClaimProofInvalid))
+    );
+}
+
+#[test]
+fn proof_depth_covers_the_maximum_claims() {
+    assert!(
+        (1u64 << MAX_PROOF_DEPTH) >= u64::from(MAX_CLAIMS_PER_EVENT),
+        "a tree over {} leaves is deeper than MAX_PROOF_DEPTH of {}",
+        MAX_CLAIMS_PER_EVENT,
+        MAX_PROOF_DEPTH
+    );
 }
 
 #[test]
@@ -304,6 +555,7 @@ fn claim_requires_the_attendee_signature() {
         &event_id,
         &Address::generate(&env),
         &setup_claim_code_hash(&env),
+        &Vec::new(&env),
     );
 }
 
@@ -336,8 +588,14 @@ fn revoke_requires_the_organizer_signature() {
         &attendee,
         event_id,
         &setup_claim_code_hash(&env),
+        &Vec::new(&env),
     );
-    client.claim(&event_id, &attendee, &setup_claim_code_hash(&env));
+    client.claim(
+        &event_id,
+        &attendee,
+        &setup_claim_code_hash(&env),
+        &Vec::new(&env),
+    );
 
     // ...but nobody has authorized this revoke.
     client.revoke(&event_id, &attendee);
@@ -359,8 +617,14 @@ fn revoke_rejects_a_signature_from_someone_other_than_the_organizer() {
         &attendee,
         event_id,
         &setup_claim_code_hash(&env),
+        &Vec::new(&env),
     );
-    client.claim(&event_id, &attendee, &setup_claim_code_hash(&env));
+    client.claim(
+        &event_id,
+        &attendee,
+        &setup_claim_code_hash(&env),
+        &Vec::new(&env),
+    );
 
     // A stranger authorizes the revoke invocation, but the contract demands
     // the organizer's signature, so the call must still fail.
@@ -421,7 +685,7 @@ fn lifecycle_publishes_documented_events() {
         ]
     );
 
-    client.claim(&event_id, &attendee, &hash_of(&env, &code));
+    client.claim(&event_id, &attendee, &hash_of(&env, &code), &Vec::new(&env));
     assert_eq!(
         env.events().all().filter_by_contract(&contract_id),
         vec![

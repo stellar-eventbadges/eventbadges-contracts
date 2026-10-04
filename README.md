@@ -9,14 +9,17 @@ happened. Nothing here has run against a live network.**
 
 ## What the contract does
 
-- `create_event(organizer, name_hash, claim_code_hash, max_claims, closes_at)`:
-  the organizer records an event with an opaque name hash, the SHA-256 of a
-  random claim code, a badge cap (1–10,000) and a claim deadline. Organizer-
-  authorized. Returns the event id.
-- `claim(event_id, attendee, claim_code_hash)`: the attendee claims their own
-  badge by presenting the claim code's SHA-256, which must equal the stored
-  hash. The raw code is never sent to the chain — see
-  [decisions/0002](docs/decisions/0002-claim-code-not-in-transactions.md). One
+- `create_event(organizer, name_hash, claim_root, max_claims, closes_at)`: the
+  organizer records an event with an opaque name hash, a Merkle root over its
+  attendees' claim-code hashes, a badge cap (1–10,000) and a claim deadline.
+  Organizer-authorized. Returns the event id.
+- `claim(event_id, attendee, leaf_hash, proof)`: the attendee claims their own
+  badge by presenting the SHA-256 of **their** claim code and the proof that
+  it belongs to the event's root. The raw code is never sent to the chain
+  ([decisions/0002](docs/decisions/0002-claim-code-not-in-transactions.md)),
+  the leaf is not derivable from the public root, and it is spent on the first
+  claim so one code takes one place
+  ([decisions/0003](docs/decisions/0003-per-attendee-claim-codes.md)). One
   badge per attendee per event; fails after `closes_at` or when the cap is
   reached.
 - `award(event_id, attendee)`: the organizer issues a badge directly, for
@@ -32,9 +35,10 @@ happened. Nothing here has run against a live network.**
 
 ## Privacy
 
-No names, emails or personal IDs touch the chain. `name_hash` and
-`claim_code_hash` are opaque hashes; claim codes are random secrets generated
-off-chain and their digests are all the contract ever receives (see
+No names, emails or personal IDs touch the chain. `name_hash` and `claim_root`
+are opaque hashes; claim codes are random secrets generated off-chain, and the
+contract receives only one leaf of their tree per claim — never a code, and
+never anything from which another attendee's code could be derived (see
 [docs/claim-codes.md](docs/claim-codes.md)). Test fixtures use synthetic bytes
 only.
 
@@ -65,7 +69,7 @@ helpers computed from each event's real `closes_at` deadline),
 ```bash
 cargo fmt --all --check
 cargo clippy --all-targets -- -D warnings
-cargo test              # 25 tests: 8 error paths + 17 lifecycle/auth/TTL
+cargo test              # 34 tests: 9 error paths + 25 lifecycle/auth/merkle
 node --test             # 23 tests over the ERRORS.md and events checkers
 node scripts/check-errors.mjs
 node scripts/check-events.mjs

@@ -25,9 +25,9 @@ Emitted once per event, by `create_event`.
 | Emitted by | `create_event` in `src/badges.rs` |
 | Asserted in | `lifecycle_publishes_documented_events` in `src/test.rs` |
 
-The claim code hash is deliberately **not** in the event data: it is stored
-with the event, but publishing it again would only widen its exposure. See
-[claim-codes.md](claim-codes.md).
+The claim root is deliberately **not** in the event data: it is readable from
+`get_event`, and repeating it would only widen the event payload for indexers.
+See [claim-codes.md](claim-codes.md).
 
 ## `BadgeClaimed`
 

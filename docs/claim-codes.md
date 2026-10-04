@@ -1,53 +1,72 @@
 # Claim codes: how they should be generated and used
 
-The contract never sees a claim code. `create_event` receives only
-`claim_code_hash` — the SHA-256 of the code — and `claim` receives that same
-digest, which it compares to the stored hash byte for byte. The raw code never
-enters a transaction: the organizer's machine generates it, the attendee's
-client hashes it, and only the digest is sent. This file records how the code
-itself should be produced off-chain.
+The contract never sees a claim code. `create_event` receives a Merkle root
+over the SHA-256 of every attendee's code, and `claim` receives one leaf plus
+the proof that connects it to that root. Codes stay on the organizer's machine
+and on the attendees' devices; only hashes travel. This file records how the
+codes and the tree should be produced off-chain.
+
+See [decisions/0003](decisions/0003-per-attendee-claim-codes.md) for why the
+tree exists, and what it does and does not fix.
 
 ## The rule
 
-**A claim code is a random secret, generated on the organizer's machine, never
-derived from personal data.**
+**One random code per attendee, generated on the organizer's machine, never
+derived from personal data, never reused across events.**
 
-- Generate it with a cryptographically secure random generator — for example
-  `openssl rand -hex 32`, or a password manager's generator set to maximum
-  length. Do not build it from a name, an email, a ticket number, a date, or
-  anything else a attendee could guess or that would leak who attended if the
-  code were later exposed.
-- Hash it once, locally: `sha256(code)` produces the `BytesN<32>` the contract
-  stores as `claim_code_hash`. The raw code is then shared out-of-band — QR
-  code at the door, private message, printed slip — and **never uploaded**. A
-  claim transaction carries the digest, not the code, so the code is never
-  published to the mempool or the ledger.
-- **The digest is not a secret.** `get_event` returns `claim_code_hash` to
-  anyone, for any event, from the moment it is created, so anyone who reads
-  the chain holds the value a successful claim presents. Knowing the digest
-  does not reveal the code (SHA-256 is preimage-resistant), but it is a
-  bearer credential: while the window is open it can claim a slot. This is
-  the sharing defect, and it is deliberately not fixed here — see
-  [ROADMAP.md](../ROADMAP.md) and
-  [decisions/0002](decisions/0002-claim-code-not-in-transactions.md).
-- If the raw code ever leaks, the hash on-chain does not reveal it (preimage
-  resistance), but anyone holding the raw code can compute the digest and
-  claim. Treat a leaked code like a leaked password: generate a new event
-  rather than trying to patch, since v0 has no way to rotate a stored hash.
-- The code is shared by all attendees of an event (one code per event in v0);
-  the contract's per-attendee cap (`AlreadyHeld`) is what stops one person
-  from claiming twice. Unique per-attendee codes via Merkle proofs are
-  deliberately unimplemented — see ROADMAP.md and the audit trail in
-  `docs/decisions/0001-nft-approach.md`.
+- Generate one code per attendee with a cryptographically secure random
+  generator — for example `openssl rand -hex 32` per person, or a password
+  manager's generator set to maximum length. Do not build a code from a name,
+  an email, a ticket number, a date, or anything else an attendee could guess
+  or that would leak who attended if the code were later exposed.
+- **Hash each code once, locally**: `leaf = sha256(code)`, where `code` is the
+  32 raw bytes. This is exactly what `hashClaimCode` in the app already does,
+  so the app's existing helper produces leaves unchanged.
+- **Build the tree** over the leaves, one leaf per attendee:
+
+  ```text
+  node(a, b)  = sha256( min(a, b) || max(a, b) )   # sorted pair
+  leaf_i      = sha256( code_i )                   # 32-byte code
+  ```
+
+  Sort the two children before hashing, so a proof is an unordered list of
+  siblings. When a level has an odd number of nodes, the last node is hashed
+  with **itself** — that is what keeps every proof exactly
+  `ceil(log2(attendees))` hashes long, and it is what the contract verifies.
+  The root is the last node left.
+- **Hand each attendee their own code** — QR code at the door, private
+  message, printed slip — and keep nothing. The organizer needs to keep only
+  the codes until they are distributed, and the tree (or the attendee list) if
+  they want to issue a proof again.
+- **A one-attendee event needs no tree**: its root is that attendee's leaf and
+  the proof is empty.
+- **The root is public and harmless.** `get_event` returns it to anyone, but
+  the leaves are not derivable from it, so the contract no longer publishes the
+  means to claim. This is the change from the single-code design, where the
+  stored digest *was* the value a claim presented.
+- **A code takes exactly one place.** `claim` spends the leaf it verifies, so
+  the same code cannot take a second place even if the leaf is read out of a
+  claim transaction (`ClaimCodeUsed`). The per-attendee cap stops the same
+  address claiming twice; the spent-leaf record stops the same *code*.
+- **If a code leaks**, whoever has it can take the one place it was for, before
+  the attendee does. The contract cannot tell who a leaf was meant for: revoke
+  the badge that used it and `award` one to the attendee who was shut out. If
+  you need more than that, address-bound leaves are the design to revisit — see
+  ADR 0003's rejected-options section, which needs attendee addresses before
+  the event is created.
+- **Generate fresh codes per event.** The contract keys spent leaves by event,
+  so the same code in two trees would work in both; that is not a feature
+  anyone should rely on.
 
 ## Why hashes only, on-chain
 
 The privacy rules in [AGENTS.md](../AGENTS.md) forbid personal data on-chain.
-Storing `sha256(code)` instead of the code keeps the chain holding nothing but
-an opaque commitment; the event's `name_hash` follows the same pattern for the
-event's name. Since
-[decisions/0002](decisions/0002-claim-code-not-in-transactions.md) the same
-reasoning applies to the claim transaction itself: the contract stores the
-digest and compares against the digest, so no transaction ever publishes a
-reusable secret. Test fixtures use synthetic bytes only — nothing in
-`src/test.rs` or `test_snapshots/` derives from a real person.
+Storing hashes instead of codes keeps the chain holding nothing but opaque
+commitments; the event's `name_hash` follows the same pattern for the event's
+name. Since
+[decisions/0002](decisions/0002-claim-code-not-in-transactions.md) the claim
+transaction carries a digest rather than the code, and since
+[decisions/0003](decisions/0003-per-attendee-claim-codes.md) that digest is a
+leaf of a tree whose root is the only thing stored — so neither the code nor
+the means to claim it is published. Test fixtures use synthetic bytes only —
+nothing in `src/test.rs` or `test_snapshots/` derives from a real person.

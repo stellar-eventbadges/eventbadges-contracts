@@ -8,7 +8,7 @@
 //! Read the State Archival guide before changing anything here:
 //! <https://developers.stellar.org/docs/learn/fundamentals/contract-development/storage/state-archival>
 
-use soroban_sdk::{contracttype, Address, Env};
+use soroban_sdk::{contracttype, Address, BytesN, Env};
 
 /// Stellar ledgers close roughly every 5 seconds, so a day is about 17,280
 /// ledgers. TTL values are expressed in ledgers.
@@ -44,6 +44,11 @@ pub enum DataKey {
     /// One attendee's badge-id list for one event, so `badges_of` has a
     /// bounded, keyed place to start. Length is capped by [`super::MAX_CLAIMS_PER_EVENT`].
     AttendeeBadges(u64, Address),
+    /// A claim leaf that has been spent, so one code can take only one place
+    /// even if the leaf is read out of a claim transaction. Written once per
+    /// successful claim, so the entry count is bounded by
+    /// `MAX_CLAIMS_PER_EVENT` per event.
+    RedeemedLeaf(u64, BytesN<32>),
 }
 
 /// Extends the TTL of the contract instance and its instance entries.

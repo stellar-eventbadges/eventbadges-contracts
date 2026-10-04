@@ -13,7 +13,7 @@
 //! builds with `overflow-checks = true` (see `Cargo.toml`), so an overflow
 //! traps instead of wrapping silently.
 
-use soroban_sdk::{Address, BytesN, Env, Vec};
+use soroban_sdk::{Address, Bytes, BytesN, Env, Vec};
 
 use crate::storage::{extend_instance_ttl, extend_record_ttl, DataKey};
 use crate::types::{Badge, BadgeAwarded, BadgeClaimed, BadgeRevoked, Error, Event, EventCreated};
@@ -23,6 +23,39 @@ use crate::types::{Badge, BadgeAwarded, BadgeClaimed, BadgeRevoked, Error, Event
 /// can hold at most one badge per event, enforced by the `AlreadyHeld` check
 /// in `claim` and `award`.
 pub const MAX_CLAIMS_PER_EVENT: u32 = 10_000;
+
+/// The longest proof a `claim` can carry. A tree over `MAX_CLAIMS_PER_EVENT`
+/// leaves is `ceil(log2(10_000)) = 14` levels deep (`2^14 = 16_384`), so a
+/// longer proof cannot reach any root this contract can store and is refused
+/// before any hashing happens. Kept honest by
+/// `proof_depth_covers_the_maximum_claims` in `src/test.rs`.
+pub const MAX_PROOF_DEPTH: u32 = 14;
+
+/// One Merkle step: hashes a node with its sibling, sorting the two first so a
+/// proof is an unordered list of siblings. This is the same rule the
+/// organizer's tree builder uses in `docs/claim-codes.md`.
+fn hash_pair(env: &Env, a: &BytesN<32>, b: &BytesN<32>) -> BytesN<32> {
+    let (low, high) = if a <= b { (a, b) } else { (b, a) };
+    let mut bytes = [0u8; 64];
+    bytes[..32].copy_from_slice(&low.to_array());
+    bytes[32..].copy_from_slice(&high.to_array());
+    BytesN::from(env.crypto().sha256(&Bytes::from_array(env, &bytes)))
+}
+
+/// Folds `leaf` up the tree with `proof` and reports whether the result is the
+/// event's committed root. An empty proof verifies only against a root that
+/// *is* the leaf, which is the one-attendee case.
+fn verify_merkle(env: &Env, leaf: &BytesN<32>, proof: &Vec<BytesN<32>>, root: &BytesN<32>) -> bool {
+    if proof.len() > MAX_PROOF_DEPTH {
+        return false;
+    }
+
+    let mut node = leaf.clone();
+    for sibling in proof.iter() {
+        node = hash_pair(env, &node, &sibling);
+    }
+    node == *root
+}
 
 /// Loads an event or reports its absence.
 fn load_event(env: &Env, event_id: u64) -> Result<Event, Error> {
@@ -81,17 +114,18 @@ fn issue_badge(env: &Env, event: &Event, attendee: &Address) {
     extend_record_ttl(env, &list_key, event.closes_at);
 }
 
-/// Records a new event for `organizer`, with an opaque name hash, the hash of
-/// a random claim code, a badge cap and a claim deadline.
+/// Records a new event for `organizer`, with an opaque name hash, the Merkle
+/// root over its attendees' claim-code hashes, a badge cap and a claim
+/// deadline.
 ///
-/// The claim code hash is stored but deliberately left out of the
-/// `EventCreated` event: it is already shared out-of-band with attendees, and
-/// publishing it again would only widen its exposure.
+/// The root is stored but deliberately left out of the `EventCreated` event:
+/// it is already readable from `get_event`, so repeating it would only widen
+/// the event payload for indexers.
 pub fn create_event(
     env: &Env,
     organizer: Address,
     name_hash: BytesN<32>,
-    claim_code_hash: BytesN<32>,
+    claim_root: BytesN<32>,
     max_claims: u32,
     closes_at: u64,
 ) -> Result<u64, Error> {
@@ -115,7 +149,7 @@ pub fn create_event(
         id: event_id,
         organizer: organizer.clone(),
         name_hash: name_hash.clone(),
-        claim_code_hash,
+        claim_root,
         max_claims,
         closes_at,
         claim_count: 0,
@@ -139,20 +173,21 @@ pub fn create_event(
     Ok(event_id)
 }
 
-/// Claims a badge for `attendee` by presenting `claim_code_hash`, which must
-/// equal the event's stored hash. One badge per attendee per event; the window
-/// must still be open and the cap not reached.
+/// Claims a badge for `attendee` by presenting the leaf hash of their own
+/// claim code and a Merkle proof that it belongs to the event's claim root.
+/// One badge per attendee per event, and one place per leaf; the window must
+/// still be open and the cap not reached.
 ///
-/// The caller hashes the claim code off-chain and sends the digest, so the raw
-/// secret never rides in the transaction. The check is a direct comparison
-/// rather than a hash, because the code is not here to hash. The digest is
-/// already public through `get_event`, so publishing it reveals nothing new.
-/// See `docs/decisions/0002-claim-code-not-in-transactions.md`.
+/// The caller hashes the code off-chain and sends the leaf, so the raw secret
+/// never rides in the transaction (ADR 0002), and the leaf is spent here so
+/// reading one out of a transaction cannot take a place (ADR 0003). See
+/// `docs/decisions/0003-per-attendee-claim-codes.md`.
 pub fn claim(
     env: &Env,
     event_id: u64,
     attendee: Address,
-    claim_code_hash: &BytesN<32>,
+    leaf_hash: &BytesN<32>,
+    proof: &Vec<BytesN<32>>,
 ) -> Result<(), Error> {
     attendee.require_auth();
 
@@ -167,11 +202,22 @@ pub fn claim(
         return Err(Error::AlreadyHeld);
     }
 
-    if *claim_code_hash != event.claim_code_hash {
-        return Err(Error::ClaimCodeMismatch);
+    if !verify_merkle(env, leaf_hash, proof, &event.claim_root) {
+        return Err(Error::ClaimProofInvalid);
+    }
+
+    // The leaf is the only part of a claim that could be replayed by anyone
+    // who reads the transaction, so spending it is what makes one code equal
+    // one place. Doing this after the last fallible check means a failed claim
+    // never burns a leaf.
+    let leaf_key = DataKey::RedeemedLeaf(event_id, leaf_hash.clone());
+    if env.storage().persistent().has(&leaf_key) {
+        return Err(Error::ClaimCodeUsed);
     }
 
     event.claim_count = count_after_issue(&event)?;
+    env.storage().persistent().set(&leaf_key, &true);
+    extend_record_ttl(env, &leaf_key, event.closes_at);
     issue_badge(env, &event, &attendee);
 
     BadgeClaimed {

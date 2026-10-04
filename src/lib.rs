@@ -19,9 +19,10 @@ pub struct Contract;
 
 #[contractimpl]
 impl Contract {
-    /// Records a new event for `organizer`, with an opaque `name_hash`, the
-    /// SHA-256 of a random claim code, a badge cap and a claim deadline
-    /// (`closes_at`, Unix seconds). Returns the new event id.
+    /// Records a new event for `organizer`, with an opaque `name_hash`, a
+    /// Merkle root over its attendees' claim-code hashes (`claim_root`), a
+    /// badge cap and a claim deadline (`closes_at`, Unix seconds). Returns the
+    /// new event id.
     ///
     /// Errors:
     /// - [`Error::MaxClaimsTooLarge`] for `max_claims` outside 1..=`MAX_CLAIMS_PER_EVENT`.
@@ -30,39 +31,34 @@ impl Contract {
         env: Env,
         organizer: Address,
         name_hash: BytesN<32>,
-        claim_code_hash: BytesN<32>,
+        claim_root: BytesN<32>,
         max_claims: u32,
         closes_at: u64,
     ) -> Result<u64, Error> {
         badges::create_event(
-            &env,
-            organizer,
-            name_hash,
-            claim_code_hash,
-            max_claims,
-            closes_at,
+            &env, organizer, name_hash, claim_root, max_claims, closes_at,
         )
     }
 
-    /// Claims a badge for `attendee` by presenting `claim_code_hash`, the
-    /// SHA-256 of the claim code, which must match the event's stored hash.
+    /// Claims a badge for `attendee` by presenting the SHA-256 of their own
+    /// claim code (`leaf_hash`) and the `proof` that it belongs to the event's
+    /// claim root.
     ///
-    /// The raw claim code is never passed to the chain: publishing it here
-    /// would put a reusable secret in every transaction and in the permanent
-    /// ledger. The digest is safe to publish because it is already readable
-    /// from `get_event`, and SHA-256 does not yield the code. See
-    /// `docs/decisions/0002-claim-code-not-in-transactions.md`.
+    /// The raw claim code is never passed to the chain (ADR 0002), the leaf is
+    /// not derivable from the public root (ADR 0003), and it is spent on the
+    /// first successful claim so one code can take one place.
     ///
     /// Errors: [`Error::EventNotFound`], [`Error::CapReached`],
     /// [`Error::EventClosed`], [`Error::AlreadyHeld`],
-    /// [`Error::ClaimCodeMismatch`].
+    /// [`Error::ClaimProofInvalid`], [`Error::ClaimCodeUsed`].
     pub fn claim(
         env: Env,
         event_id: u64,
         attendee: Address,
-        claim_code_hash: BytesN<32>,
+        leaf_hash: BytesN<32>,
+        proof: Vec<BytesN<32>>,
     ) -> Result<(), Error> {
-        badges::claim(&env, event_id, attendee, &claim_code_hash)
+        badges::claim(&env, event_id, attendee, &leaf_hash, &proof)
     }
 
     /// Awards a badge directly, for attendees who cannot claim. Organizer-authorized.
