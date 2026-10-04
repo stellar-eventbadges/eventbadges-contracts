@@ -29,9 +29,10 @@ What this makes easy, what it makes hard, and what would change our mind.
   non-transferable claim registry on plain `soroban-sdk 28`, with no transfer,
   approve or operator entrypoint.
 - **0002 — Keep the raw claim code out of the claim transaction** (*accepted*,
-  2026-10-03, **implemented 2026-10-04**): `claim` takes the claim code's
-  SHA-256 instead of the code itself. Separate from Merkle per-attendee codes,
-  which fix sharing rather than the transaction's contents.
+  2026-10-03, **implemented 2026-10-04**, extended by 0003): the claim
+  transaction carries a hash of the claim code rather than the code itself;
+  since 0003 that hash is a leaf in the event's Merkle tree. 0003 fixed
+  sharing; 0002 keeps the raw secret out of transactions.
 - **0003 — Per-attendee claim codes via Merkle proofs** (*accepted*,
   2026-10-04, **implemented 2026-10-04**): one leaf per attendee, a stored
   root, a sorted-pair tree and a spent-leaf record, so one code takes one

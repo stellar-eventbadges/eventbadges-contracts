@@ -1,7 +1,15 @@
 # 0002. Keep the raw claim code out of the claim transaction
 
 Date: 2026-10-03
-Status: accepted — implemented 2026-10-04
+Status: accepted — implemented 2026-10-04, extended by
+[0003](0003-per-attendee-claim-codes.md) the same day
+
+> **Update, later on 2026-10-04.** ADR 0003 replaced the stored
+> `claim_code_hash` with a Merkle `claim_root`, and this ADR's single
+> `claim_code_hash` argument with a leaf plus a proof. The decision here — the
+> raw code never enters a transaction — stands unchanged and now covers the
+> leaf as well. The snippets below record this decision as it was made, not
+> the shape of the code today.
 
 ## Context
 

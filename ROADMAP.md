@@ -116,15 +116,17 @@ repos, so they stay in sync.
       acknowledgement recorded nowhere should be described as consent.
       Shipping the notice settles none of them — the gate is `aria-disabled`
       plus a refusal in `submitClaim`, recorded nowhere, which is deliberate
-      rather than a stopgap. **Implemented 2026-10-04:**
-      [ADR 0002](docs/decisions/0002-claim-code-not-in-transactions.md) landed
-      in the contracts repo and the app together — `claim` now takes the code's
-      SHA-256 instead of the code, so the paragraph above is obsolete by
-      construction and the notice was rewritten in the same change. That
-      answers the "change the contract instead of disclosing" decision on this
-      list; the other three still stand.
+      rather than a stopgap. **Implemented 2026-10-04:** ADRs
+      [0002](docs/decisions/0002-claim-code-not-in-transactions.md)
+      and [0003](docs/decisions/0003-per-attendee-claim-codes.md)
+      landed in the contracts repo and the app together — the claim transaction
+      carries the code's leaf and proof, not the code, and the event stores a
+      Merkle root, so the paragraph above is obsolete by construction and the
+      notice was rewritten in the same change. That answers the "change the
+      contract instead of disclosing" decision on this list; the other three
+      still stand.
 - [ ] **Third parties in the path.** The app sends addresses — and the claim
-      code's digest, which is already public, inside the `claim` transaction —
+      code's leaf, inside the `claim` transaction —
       to the Stellar RPC endpoint, and explorers index events. How are RPC
       operators and explorers characterised (processor, independent
       controller), and can a pilot simply accept the public testnet RPC?
