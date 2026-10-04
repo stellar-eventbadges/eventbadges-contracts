@@ -12,6 +12,10 @@
 //! Every variant here has exactly one row in `ERRORS.md` at the repository
 //! root and exactly one test in `src/error_paths.rs`. `scripts/check-errors.mjs`
 //! fails CI if this enum and `ERRORS.md` drift apart.
+//!
+//! Each `#[contractevent]` type below has one section in `docs/events.md`, and
+//! `scripts/check-events.mjs` fails CI if a struct field and its documented
+//! Topics or Data row drift apart.
 
 use soroban_sdk::{contracterror, contractevent, contracttype, Address, BytesN};
 

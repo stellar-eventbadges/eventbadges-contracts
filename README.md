@@ -53,8 +53,10 @@ helpers computed from each event's real `closes_at` deadline),
   wording there is the source of truth for the app.
 - [`docs/events.md`](docs/events.md) — topic and data layout of all four
   events, asserted exactly in tests.
-- [`scripts/check-errors.mjs`](scripts/check-errors.mjs) — fails when
-  `ERRORS.md` and `enum Error` drift; `node --test` covers the checker.
+- [`scripts/check-errors.mjs`](scripts/check-errors.mjs) and
+  [`scripts/check-events.mjs`](scripts/check-events.mjs) — fail when
+  `ERRORS.md` or `docs/events.md` drifts from `src/types.rs`; `node --test`
+  covers both checkers.
 - [`scripts/deploy-testnet.sh`](scripts/deploy-testnet.sh) — **written, never
   run.** Deploying is Tim's step.
 
@@ -63,9 +65,10 @@ helpers computed from each event's real `closes_at` deadline),
 ```bash
 cargo fmt --all --check
 cargo clippy --all-targets -- -D warnings
-cargo test              # 24 tests: 8 error paths + 16 lifecycle/auth/TTL
-node --test             # 9 tests over the ERRORS.md checker
+cargo test              # 25 tests: 8 error paths + 17 lifecycle/auth/TTL
+node --test             # 23 tests over the ERRORS.md and events checkers
 node scripts/check-errors.mjs
+node scripts/check-events.mjs
 stellar contract build  # wasm32v1-none; verified with Stellar CLI 28.1.0
 ```
 

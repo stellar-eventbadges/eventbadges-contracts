@@ -51,6 +51,7 @@ cargo clippy --all-targets -- -D warnings
 cargo test
 node --test
 node scripts/check-errors.mjs
+node scripts/check-events.mjs
 stellar contract build
 ```
 
@@ -64,6 +65,7 @@ stellar contract build
 - `src/error_paths.rs`: exactly one test per `Error` variant, named `error_path_<variant_name_in_snake_case>`, that triggers the real failure path (not just constructs the error value).
 - `src/test.rs`: happy-path and multi-step integration tests.
 - `ERRORS.md` at the repo root: one row per `Error` variant. `scripts/check-errors.mjs` keeps it in sync with `types.rs` and CI fails when they drift.
+- `docs/events.md`: one section per `#[contractevent]` type, with a `Topics` row and a `Data` row that each name every field as `` `field` (`Type`) ``. `scripts/check-events.mjs` keeps it in sync with `types.rs` — topics versus data map included — and CI fails when they drift.
 
 ## Contract rules (Soroban)
 
@@ -72,7 +74,7 @@ stellar contract build
 - Return errors with the `#[contracterror]` enum described above; validation and auth failures must make the transaction fail. Never return `false` to signal a failed check.
 - Storage: growing data gets one persistent entry per record. Instance storage is only for small contract-wide values. Extend TTL whenever an entry is read or written. Where a record has a natural deadline (an event's `closes_at`, a claim window), compute the TTL bump from that deadline plus a safety margin, not a single flat constant for everything. Read the State Archival and Contract Storage guides first.
 - Use checked arithmetic. No unbounded loops or unbounded input lists; cap sizes and document the caps.
-- Emit events for state changes using `#[contractevent]` types and document their layout in `docs/events.md`.
+- Emit events for state changes using `#[contractevent]` types and document their layout in `docs/events.md` in the same commit; `node scripts/check-events.mjs` fails until the two agree.
 - Tests must cover happy paths, every error path, and unauthorized callers. Aim for test code that is at least as large as implementation code; that ratio is a floor, not a target to pad past with trivial tests.
 - Prefer audited libraries (OpenZeppelin's Stellar crates) over hand-written token, access-control or governance code. Evaluate before use, record the decision in `docs/decisions/`, and pin exact versions. For this repo that evaluation is `docs/decisions/0001-nft-approach.md` — non-transferable badges are custom logic here, not a copy of a transferable token standard.
 

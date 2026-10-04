@@ -9,6 +9,11 @@ as a `Symbol`, followed by every field marked `#[topic]`; the remaining fields
 land in the data map. All four events below are asserted with exact topic and
 data layouts in `src/test.rs`.
 
+Each section lists its fields as `` `field` (`Type`) `` in a Topics row (the
+`#[topic]` fields) or a Data row (the rest). `scripts/check-events.mjs` compares
+those names against `src/types.rs` and fails CI when the two drift — a field
+added to a struct, moved between topics and data, or dropped from a row.
+
 ## `EventCreated`
 
 Emitted once per event, by `create_event`.

@@ -37,11 +37,14 @@ jobs:
       - name: Check clippy
         run: cargo clippy --all-targets -- -D warnings
 
-      - name: Test the ERRORS.md sync checker
+      - name: Test the ERRORS.md and events sync checkers
         run: node --test
 
       - name: Check ERRORS.md stays in sync with enum Error
         run: node scripts/check-errors.mjs
+
+      - name: Check docs/events.md stays in sync with the contract events
+        run: node scripts/check-events.mjs
 
       - name: Build wasm
         run: stellar contract build
