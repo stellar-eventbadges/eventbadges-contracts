@@ -69,7 +69,7 @@ helpers computed from each event's real `closes_at` deadline),
 ```bash
 cargo fmt --all --check
 cargo clippy --all-targets -- -D warnings
-cargo test              # 34 tests: 9 error paths + 25 lifecycle/auth/merkle
+cargo test              # 35 tests: 9 error paths + 26 lifecycle/auth/merkle
 node --test             # 23 tests over the ERRORS.md and events checkers
 node scripts/check-errors.mjs
 node scripts/check-events.mjs

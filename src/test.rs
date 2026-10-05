@@ -12,7 +12,7 @@ use soroban_sdk::{
 use crate::badges::{MAX_CLAIMS_PER_EVENT, MAX_PROOF_DEPTH};
 use crate::storage::{DataKey, MIN_TTL_LEDGERS, SECONDS_PER_LEDGER};
 use crate::test_helpers::{
-    advance_time, hash_of, instance_ttl, merkle_tree, mock_attendee_auth_for_claim,
+    advance_time, hash_from_hex, hash_of, instance_ttl, merkle_tree, mock_attendee_auth_for_claim,
     mock_organizer_auth_for_create_event, persistent_ttl, setup, setup_claim_code_hash,
     setup_event, synthetic_code, synthetic_hash, to_val, DAY_SECONDS,
 };
@@ -768,5 +768,81 @@ fn award_publishes_the_documented_event() {
                 .into_val(&env),
             ),
         ]
+    );
+}
+
+/// The tree helper the Merkle tests trust is pinned to fixtures computed
+/// outside this crate — with .NET's SHA-256, from the formula in
+/// `docs/claim-codes.md`. The app's `src/lib/merkle.test.ts` asserts the same
+/// values with its own builder, so a change in either language's reading of
+/// the tree fails on that side too.
+#[test]
+fn merkle_tree_matches_externally_computed_vectors() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    // Leaves are `SHA-256(32 x seed)` — the same value `hashClaimCode`
+    // produces for a synthetic code in the app.
+    assert!(
+        hash_of(&env, &synthetic_code(&env, 0x11))
+            == hash_from_hex(
+                &env,
+                "02d449a31fbb267c8f352e9968a79e3e5fc95c1bbeaa502fd6454ebde5a4bedc"
+            )
+    );
+
+    let (root, entries) = merkle_tree(&env, &[0x11, 0x22, 0x33]);
+    assert!(
+        root == hash_from_hex(
+            &env,
+            "b10c10014cddd65ce2153c08792274660b22f4e021133759cfc5651429663650"
+        )
+    );
+
+    // (leaf, [sibling at the leaf level, sibling at the root level]). The
+    // third leaf's first sibling is itself: an odd level pairs its last node
+    // with itself.
+    let expected = [
+        (
+            "02d449a31fbb267c8f352e9968a79e3e5fc95c1bbeaa502fd6454ebde5a4bedc",
+            [
+                "9f72ea0cf49536e3c66c787f705186df9a4378083753ae9536d65b3ad7fcddc4",
+                "03887f493d47a118a2fa12e53e650322e5ebb7fa11ce5f7c5bfd384999fa1360",
+            ],
+        ),
+        (
+            "9f72ea0cf49536e3c66c787f705186df9a4378083753ae9536d65b3ad7fcddc4",
+            [
+                "02d449a31fbb267c8f352e9968a79e3e5fc95c1bbeaa502fd6454ebde5a4bedc",
+                "03887f493d47a118a2fa12e53e650322e5ebb7fa11ce5f7c5bfd384999fa1360",
+            ],
+        ),
+        (
+            "deb0e38ced1e41de6f92e70e80c418d2d356afaaa99e26f5939dbc7d3ef4772a",
+            [
+                "deb0e38ced1e41de6f92e70e80c418d2d356afaaa99e26f5939dbc7d3ef4772a",
+                "4aa9c7fb082fdd4e0228c3f7447d26c928b596ce0acb554900ac7f3fdbfe9dd8",
+            ],
+        ),
+    ];
+
+    for (index, (leaf_hex, proof_hex)) in expected.iter().enumerate() {
+        let (leaf, proof) = entries.get(index as u32).unwrap();
+        assert!(leaf == hash_from_hex(&env, leaf_hex));
+        assert_eq!(proof.len(), 2);
+        for (position, sibling) in proof.iter().enumerate() {
+            assert!(sibling == hash_from_hex(&env, proof_hex[position]));
+        }
+    }
+
+    // Four leaves: an even level, so no leaf-level node pairs with itself, and
+    // the root matches the same external fixture.
+    let (root4, _) = merkle_tree(&env, &[0x11, 0x22, 0x33, 0x44]);
+    assert!(
+        root4
+            == hash_from_hex(
+                &env,
+                "5e2527d6dd500fcee0d211771b95248808222698f6d92a2d5ff125f9d2765a05"
+            )
     );
 }

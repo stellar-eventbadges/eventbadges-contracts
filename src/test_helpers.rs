@@ -182,6 +182,17 @@ fn merkle_proof(env: &Env, levels: &Vec<Vec<BytesN<32>>>, mut index: u32) -> Vec
     proof
 }
 
+/// A 32-byte hash from a 64-character lowercase hex string, for comparing
+/// against fixtures computed outside this crate. The app's
+/// `src/lib/merkle.test.ts` asserts the same values with its own builder.
+pub fn hash_from_hex(env: &Env, hex: &str) -> BytesN<32> {
+    let mut bytes = [0u8; 32];
+    for (index, byte) in bytes.iter_mut().enumerate() {
+        *byte = u8::from_str_radix(&hex[index * 2..index * 2 + 2], 16).unwrap();
+    }
+    BytesN::from_array(env, &bytes)
+}
+
 /// A ready-made event tree: `seeds` name one claim code per attendee, so the
 /// leaf for each is `SHA-256(32 x seed)` — exactly `hashClaimCode`'s output in
 /// the app. Returns the root and each attendee's `(leaf, proof)`, in seed
