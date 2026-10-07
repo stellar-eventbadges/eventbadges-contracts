@@ -82,8 +82,9 @@ Toolchain: `soroban-sdk = "28"` (28.0.0 in `Cargo.lock`), Rust stable
 
 ## Deliberately not built
 
-Unique per-attendee claim codes via Merkle proofs, badge metadata and images,
-batch awarding, event series and streak badges, pagination for `badges_of`.
+Badge metadata and images, batch awarding, event series and streak badges,
+pagination for `badges_of`. Unique per-attendee claim codes via Merkle proofs
+are implemented; address-bound leaves remain a product decision in ADR 0003.
 Each has a draft under [docs/issue-drafts/](docs/issue-drafts/); the list is
 mirrored in [ROADMAP.md](ROADMAP.md). Testnet only — no mainnet, ever, in this
 phase.

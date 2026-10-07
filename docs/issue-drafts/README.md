@@ -1,8 +1,9 @@
 # Issue drafts
 
 Drafts for work deliberately left out of v0, one file per item, ready for Tim
-to open as GitHub issues. Nothing here is implemented; each draft says what
-would change and how to verify it.
+to open as GitHub issues. Draft 01 is implemented and retained as historical
+reasoning; do not open it as unfinished work. Drafts 02–05 describe work not
+implemented yet, including how to verify it.
 
 | Draft | Area | Difficulty |
 |---|---|---|

@@ -15,7 +15,7 @@ What is next for `eventbadges-contracts`, in order. Anything not listed as done 
 
 ## Next
 
-- [ ] v0 contract from `STELLAR-BUILD-PLAYBOOK-v3.md` section 9
+- [x] v0 contract from `STELLAR-BUILD-PLAYBOOK-v3.md` section 9
       (present in `~/Desktop/Drips/_reference/playbooks/`, confirmed
       2026-10-02). v0 scope from that section: Soroban contract where
       organizers create events and attendees claim a non-transferable
@@ -23,7 +23,7 @@ What is next for `eventbadges-contracts`, in order. Anything not listed as done 
       `revoke`, `has_badge`, `badges_of` (bounded), `get_event`; transfers
       must always fail. `name_hash` and the claim commitment (`claim_root`
       since [ADR 0003](docs/decisions/0003-per-attendee-claim-codes.md)) stay
-      hashes; no personal data on-chain. Planned per the program stack: thin `lib.rs`;
+      hashes; no personal data on-chain. Implemented per the program stack: thin `lib.rs`;
       `types.rs` (error enum, stored types, events); `storage.rs`;
       `error_paths.rs` with one test per variant; `test.rs` lifecycle tests;
       `ERRORS.md` + `scripts/check-errors.mjs` and its tests;

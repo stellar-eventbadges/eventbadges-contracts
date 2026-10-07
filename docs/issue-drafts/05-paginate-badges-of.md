@@ -1,7 +1,7 @@
 # Paginate `badges_of`
 
-**Difficulty:** easy
-**Labels:** good first issue, area:contracts
+**Difficulty:** hard
+**Labels:** help wanted, area:contracts
 
 ## Problem
 
@@ -15,8 +15,10 @@ loop.
 
 - A `badges_of_page(attendee, cursor, limit)` style read with a documented
   `limit` cap, returning badges plus an opaque cursor.
-- The attendee's cross-event index is a new persistent entry per attendee;
-  it must follow the TTL rules like every other record.
+- Use bounded persistent index pages, not an ever-growing single vector per attendee.
+  Define write/read resource caps and extend TTL for every index page touched.
+- Specify revoked/expired membership behavior and bind opaque cursors to the
+  attendee and ordering. Malformed or mismatched cursors must fail predictably.
 - Out of scope: changing the existing per-event `badges_of`, any indexer
   work.
 
@@ -28,6 +30,11 @@ loop.
       event or error variant.
 - [ ] TTL of the new index entries is covered by a test, as in
       `claim_extends_the_badge_ttl`.
+
+- [ ] Tests cover revoked and expired records, empty/final pages, malformed and
+      cross-attendee cursors, and index-page TTL.
+- [ ] Measured resource usage stays bounded as total attendance grows; no call
+      scans or rewrites the complete attendee history.
 
 ## Where to start
 
