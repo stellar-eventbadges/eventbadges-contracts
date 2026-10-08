@@ -1,0 +1,79 @@
+{
+  "name": "Bug report",
+  "description": "Report a reproducible problem with synthetic, non-sensitive evidence.",
+  "title": "[Bug]: ",
+  "body": [
+    {
+      "type": "markdown",
+      "attributes": {
+        "value": "This form creates a public issue. Never include secret keys, seed phrases, tokens, .env contents, or personal data. Use synthetic examples and redact logs. Do not post sensitive vulnerability details here."
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "summary",
+      "attributes": {
+        "label": "Problem",
+        "description": "Describe the problem and the affected page, function, or documentation file."
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "environment",
+      "attributes": {
+        "label": "Environment",
+        "description": "Commit or release, Rust, Stellar CLI and SDK versions; specify local tests or testnet. Use synthetic identifiers."
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "reproduction",
+      "attributes": {
+        "label": "Steps to reproduce",
+        "description": "Provide minimal numbered steps or a failing test using synthetic data. Say if the problem has only been observed locally."
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "expected",
+      "attributes": {
+        "label": "Expected behavior",
+        "description": "What should happen, and which existing requirement supports that expectation?"
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "actual",
+      "attributes": {
+        "label": "Actual behavior and evidence",
+        "description": "What happened? Include sanitized errors, test output, or screenshots when useful; exclude personal data."
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "checks",
+      "attributes": {
+        "label": "Checks already run",
+        "description": "List exact commands and outcomes, or explicitly say which checks were not run."
+      },
+      "validations": {
+        "required": false
+      }
+    }
+  ]
+}

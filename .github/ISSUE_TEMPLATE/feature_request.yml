@@ -1,0 +1,68 @@
+{
+  "name": "Feature request",
+  "description": "Propose a scoped improvement with checkable acceptance criteria.",
+  "title": "[Feature]: ",
+  "body": [
+    {
+      "type": "markdown",
+      "attributes": {
+        "value": "Keep this proposal within the testnet project scope. Never include secrets or personal data. Check ROADMAP.md and existing issue drafts before proposing work; no deployment or pilot is implied."
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "problem",
+      "attributes": {
+        "label": "Problem and affected users",
+        "description": "Explain the concrete need and affected workflow or documentation page. Do not invent users or pilot results."
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "scope",
+      "attributes": {
+        "label": "Proposed scope",
+        "description": "Describe the smallest useful change, affected files or modules, and what is out of scope. Link related roadmap items or issue drafts."
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "acceptance",
+      "attributes": {
+        "label": "Acceptance criteria",
+        "description": "List observable, checkable outcomes as a checklist."
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "validation",
+      "attributes": {
+        "label": "Validation plan",
+        "description": "Describe tests or documentation checks that would verify the change. Explain new dependencies or interface changes if proposed."
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "alternatives",
+      "attributes": {
+        "label": "Alternatives considered",
+        "description": "Describe existing workarounds or smaller alternatives."
+      },
+      "validations": {
+        "required": false
+      }
+    }
+  ]
+}

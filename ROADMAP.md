@@ -1,5 +1,15 @@
 # Roadmap
 
+## Authorized demonstration exception — October 8, 2026
+
+The maintainer explicitly authorized the assistant to deploy this implemented
+contract to Stellar testnet using synthetic data. That demonstration is now
+recorded in [docs/TESTNET_DEMONSTRATION.md](docs/TESTNET_DEMONSTRATION.md).
+This narrow authorization overrides the human-only deployment and partner-before-
+deployment instructions below for this demonstration. Those instructions remain
+in force for real pilots. No partner agreement or pilot outcome is claimed.
+Any earlier “not deployed” statements describe the state before this exception.
+
 What is next for `eventbadges-contracts`, in order. Anything not listed as done is
 **not implemented**.
 
