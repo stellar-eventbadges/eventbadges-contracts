@@ -1,0 +1,225 @@
+{
+  "startedAt": "2026-10-08T21:41:34.609Z",
+  "network": "testnet",
+  "contract": "CAHAB7ABUENVP7SZW37V3VRSAAASB6SV7FOBNWS2JYGUU7W6GHYY6JWR",
+  "scope": "CLI-signed synthetic demonstration only; no browser wallet, real users, pilot, mainnet, or DuesTreasury/Ajo invocation.",
+  "identityAlias": "drips-badges-smoke-20261008",
+  "publicAddress": "GDNQHPOYWNJ2ORLXWK2JR67JIAM3TKMSKUSKJMIHBOMAUR5BK4C22QRM",
+  "nameHash": "e047239101b2f6013f360adf6442a89cb9a417f0ad45c67309a741516af6f340",
+  "claimLeafAndRoot": "57f258af1954160db6c1127dab026e3c7e2cca211ebc95a0244a2d9267425963",
+  "wrongLeaf": "3857f1fa03853302c3ea6a34d0d6a14750f228198bfa41ea0e14c315d1ec6808",
+  "closesAt": 1791582094,
+  "transactions": [
+    {
+      "action": "create",
+      "status": "SUCCESS",
+      "startedAt": "2026-10-08T21:43:08.741Z",
+      "cliExitCode": 0,
+      "hash": "fd738d5a2c8929c76cfb6b30b67c2267b5686f1d467252fa7d2be084c58257f7",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/fd738d5a2c8929c76cfb6b30b67c2267b5686f1d467252fa7d2be084c58257f7",
+      "ledger": 5094449,
+      "createdAt": "1791495832",
+      "returnValue": 1
+    },
+    {
+      "action": "claim",
+      "status": "SUCCESS",
+      "startedAt": "2026-10-08T21:47:31.052Z",
+      "cliExitCode": 0,
+      "hash": "3725c03da357f6db50ae378f4e0db2be28eb1b5c4d3eb92f2609fbfb27b2a368",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/3725c03da357f6db50ae378f4e0db2be28eb1b5c4d3eb92f2609fbfb27b2a368",
+      "ledger": 5094494,
+      "createdAt": "1791496057",
+      "returnValue": null
+    },
+    {
+      "action": "revoke",
+      "status": "SUCCESS",
+      "startedAt": "2026-10-08T21:48:09.244Z",
+      "cliExitCode": 0,
+      "hash": "8607a58491de5a994d018243b0e10aa0674e4c7aa742e47cebc2ba6cb3ce0d06",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/8607a58491de5a994d018243b0e10aa0674e4c7aa742e47cebc2ba6cb3ce0d06",
+      "ledger": 5094503,
+      "createdAt": "1791496102",
+      "returnValue": null
+    },
+    {
+      "action": "award",
+      "status": "SUCCESS",
+      "startedAt": "2026-10-08T21:49:47.818Z",
+      "cliExitCode": 0,
+      "hash": "81d8caf1f2da8c3e92757afed5f813789d71f77b8cf5ea14d7f4cf7ccf172312",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/81d8caf1f2da8c3e92757afed5f813789d71f77b8cf5ea14d7f4cf7ccf172312",
+      "ledger": 5094522,
+      "createdAt": "1791496197",
+      "returnValue": null
+    }
+  ],
+  "simulations": [
+    {
+      "action": "badproof",
+      "sent": false,
+      "cliExitCode": 1,
+      "contractErrorCode": 14
+    },
+    {
+      "action": "duplicate",
+      "sent": false,
+      "cliExitCode": 1,
+      "contractErrorCode": 13
+    }
+  ],
+  "reads": [
+    {
+      "action": "event",
+      "sent": false,
+      "afterTransactionCount": 1,
+      "result": {
+        "claim_count": 0,
+        "claim_root": "57f258af1954160db6c1127dab026e3c7e2cca211ebc95a0244a2d9267425963",
+        "closes_at": 1791582094,
+        "id": 1,
+        "max_claims": 3,
+        "name_hash": "e047239101b2f6013f360adf6442a89cb9a417f0ad45c67309a741516af6f340",
+        "organizer": "GDNQHPOYWNJ2ORLXWK2JR67JIAM3TKMSKUSKJMIHBOMAUR5BK4C22QRM"
+      }
+    },
+    {
+      "action": "has",
+      "sent": false,
+      "afterTransactionCount": 2,
+      "result": true
+    },
+    {
+      "action": "list",
+      "sent": false,
+      "afterTransactionCount": 2,
+      "result": [
+        {
+          "attendee": "GDNQHPOYWNJ2ORLXWK2JR67JIAM3TKMSKUSKJMIHBOMAUR5BK4C22QRM",
+          "event_id": 1,
+          "issued_at": 1791496057,
+          "organizer": "GDNQHPOYWNJ2ORLXWK2JR67JIAM3TKMSKUSKJMIHBOMAUR5BK4C22QRM"
+        }
+      ]
+    },
+    {
+      "action": "event",
+      "sent": false,
+      "afterTransactionCount": 2,
+      "result": {
+        "claim_count": 1,
+        "claim_root": "57f258af1954160db6c1127dab026e3c7e2cca211ebc95a0244a2d9267425963",
+        "closes_at": 1791582094,
+        "id": 1,
+        "max_claims": 3,
+        "name_hash": "e047239101b2f6013f360adf6442a89cb9a417f0ad45c67309a741516af6f340",
+        "organizer": "GDNQHPOYWNJ2ORLXWK2JR67JIAM3TKMSKUSKJMIHBOMAUR5BK4C22QRM"
+      }
+    },
+    {
+      "action": "has",
+      "sent": false,
+      "afterTransactionCount": 3,
+      "result": false
+    },
+    {
+      "action": "list",
+      "sent": false,
+      "afterTransactionCount": 3,
+      "result": []
+    },
+    {
+      "action": "event",
+      "sent": false,
+      "afterTransactionCount": 3,
+      "result": {
+        "claim_count": 0,
+        "claim_root": "57f258af1954160db6c1127dab026e3c7e2cca211ebc95a0244a2d9267425963",
+        "closes_at": 1791582094,
+        "id": 1,
+        "max_claims": 3,
+        "name_hash": "e047239101b2f6013f360adf6442a89cb9a417f0ad45c67309a741516af6f340",
+        "organizer": "GDNQHPOYWNJ2ORLXWK2JR67JIAM3TKMSKUSKJMIHBOMAUR5BK4C22QRM"
+      }
+    },
+    {
+      "action": "has",
+      "sent": false,
+      "afterTransactionCount": 4,
+      "result": true
+    },
+    {
+      "action": "list",
+      "sent": false,
+      "afterTransactionCount": 4,
+      "result": [
+        {
+          "attendee": "GDNQHPOYWNJ2ORLXWK2JR67JIAM3TKMSKUSKJMIHBOMAUR5BK4C22QRM",
+          "event_id": 1,
+          "issued_at": 1791496197,
+          "organizer": "GDNQHPOYWNJ2ORLXWK2JR67JIAM3TKMSKUSKJMIHBOMAUR5BK4C22QRM"
+        }
+      ]
+    },
+    {
+      "action": "event",
+      "sent": false,
+      "afterTransactionCount": 4,
+      "result": {
+        "claim_count": 1,
+        "claim_root": "57f258af1954160db6c1127dab026e3c7e2cca211ebc95a0244a2d9267425963",
+        "closes_at": 1791582094,
+        "id": 1,
+        "max_claims": 3,
+        "name_hash": "e047239101b2f6013f360adf6442a89cb9a417f0ad45c67309a741516af6f340",
+        "organizer": "GDNQHPOYWNJ2ORLXWK2JR67JIAM3TKMSKUSKJMIHBOMAUR5BK4C22QRM"
+      }
+    }
+  ],
+  "complete": true,
+  "networkPassphraseVerified": true,
+  "eventId": "1",
+  "sourceCommitAtVerification": "f775286acd4dd5b3482d1e020488f25862655093",
+  "assertions": [
+    {
+      "name": "Official testnet network passphrase verified",
+      "status": "PASS"
+    },
+    {
+      "name": "Exactly four distinct successful writes, verified through getTransaction",
+      "status": "PASS"
+    },
+    {
+      "name": "Creation persisted the actual organizer, opaque hashes, cap, deadline and zero count",
+      "status": "PASS"
+    },
+    {
+      "name": "claim: has_badge, badges_of and event claim_count agree",
+      "status": "PASS"
+    },
+    {
+      "name": "revoke: has_badge, badges_of and event claim_count agree",
+      "status": "PASS"
+    },
+    {
+      "name": "award: has_badge, badges_of and event claim_count agree",
+      "status": "PASS"
+    },
+    {
+      "name": "Invalid proof and duplicate claim were rejected in simulations only",
+      "status": "PASS"
+    }
+  ],
+  "completedAt": "2026-10-08T23:18:47.179Z",
+  "rpcUrl": "https://soroban-testnet.stellar.org",
+  "transport": "Temporary loopback relay to the official HTTPS RPC preserved hostname, SNI and TLS verification; no automatic write retries.",
+  "cliVersion": "28.1.0",
+  "contractExplorer": "https://stellar.expert/explorer/testnet/contract/CAHAB7ABUENVP7SZW37V3VRSAAASB6SV7FOBNWS2JYGUU7W6GHYY6JWR",
+  "limitations": [
+    "CLI signer only; no browser wallet or live app integration was tested.",
+    "The same synthetic account was organizer and attendee; this is not a real event, user study or pilot.",
+    "Single-leaf Merkle tree with empty proof exercises the ABI, not claim-code confidentiality or a realistic invitation tree.",
+    "No mainnet, real money, custody project deployment or independent security audit."
+  ]
+}

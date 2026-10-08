@@ -29,7 +29,8 @@ This contract has no initializer.
 
 ## Remaining boundaries
 
-Business-flow network smoke tests and browser-wallet integration have not been performed.
+[Live synthetic CLI/RPC smoke tests](LIVE_TESTNET_SMOKE.md) have now passed.
+Browser-wallet integration has not been tested.
 Local tests do not establish real-user outcomes. No mainnet deployment is authorized.
 Pilot deployment still requires the documented real-user agreement. Testnet resets
 and storage expiry can make this address or its state unavailable later.
