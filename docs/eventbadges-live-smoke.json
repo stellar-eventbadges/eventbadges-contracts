@@ -180,7 +180,7 @@
   "complete": true,
   "networkPassphraseVerified": true,
   "eventId": "1",
-  "sourceCommitAtVerification": "f775286acd4dd5b3482d1e020488f25862655093",
+  "sourceCommitAtVerification": "d1f313f91afecedc8ffb12b4e3b48598e85f1906",
   "assertions": [
     {
       "name": "Official testnet network passphrase verified",
