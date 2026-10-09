@@ -1,3 +1,9 @@
+<!-- project-brand -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="brand/logo-dark.svg">
+  <img src="brand/logo.svg" alt="EventBadges" height="72">
+</picture>
+
 # eventbadges — contracts
 
 Soroban contract for **eventbadges**: organizers create events and attendees
